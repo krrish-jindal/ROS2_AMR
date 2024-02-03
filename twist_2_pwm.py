@@ -11,7 +11,7 @@ class DifferentialDriver:
         self.wheel_diameter = 0.10
         self.motor_rpm = 200
         self.max_pwm_val = 170
-        self.min_pwm_val = -150
+        self.min_pwm_val = -170
         self.wheel_separation = 0.24
         self.ka= 5.0
         self.kl= 1.2
@@ -19,7 +19,7 @@ class DifferentialDriver:
         rclpy.init()
 
         self.node = rclpy.create_node('cmdvel_listener')
-
+ 
         self.subscription = self.node.create_subscription(
             Twist,
             '/cmd_vel',
@@ -68,7 +68,6 @@ class DifferentialDriver:
             self.lspeedPWM=0.0
             self.rspeedPWM=0.0
 
-        print("left:", self.lspeedPWM, "-right:", self.rspeedPWM, "-max speed:", self.max_speed)
         return self.lspeedPWM, self.rspeedPWM
 
     def callback(self, data):
@@ -78,9 +77,14 @@ class DifferentialDriver:
         right_vel = linear_vel *self.kl + ((angular_vel * self.wheel_separation) / 2) *self.ka # right wheel velocity
         left_vel = linear_vel *self.kl- ((angular_vel * self.wheel_separation) / 2)* self.ka  # left wheel velocity
 
-        print(" Left Velocity = {}  |   Right Velocity = {}  |  ".format(left_vel, right_vel))
 
         left_pwm_data, right_pwm_data = self.get_pwm(left_vel, right_vel)
+
+        left_rpm = (left_vel / (2 * pi * self.wheel_radius)) * 60
+        right_rpm = (right_vel / (2 * pi * self.wheel_radius)) * 60
+
+        print(" Left Velocity = {} m/s | Left RPM = {} RPM".format(left_vel, left_rpm))
+        print(" Right Velocity = {} m/s | Right RPM = {} RPM".format(right_vel, right_rpm))
         
         self.left_pwm.data = int(left_pwm_data)
         self.right_pwm.data = int(right_pwm_data)

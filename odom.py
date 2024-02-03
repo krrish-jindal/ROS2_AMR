@@ -15,6 +15,7 @@ class OdomCalculator(Node):
 
         self.enc_left = None
         self.enc_right = None
+        self.drive_constant = 1.0
         self.left = 0
         self.right = 0
 
@@ -32,24 +33,33 @@ class OdomCalculator(Node):
 
         self.encoder_subscription = self.create_subscription(
             Int32MultiArray,
-            'encoder_data',
+            'encoderdata',
             self.encoder_callback,
             10)
 
         self.timer = self.create_timer(0.1, self.update)
 
     def encoder_callback(self, msg):
+
         # Assuming your encoder data is received as a list [left, right]
-        self.left = msg.data[0]
-        self.right = msg.data[1]
+        left1 = msg.data[0]
+        left2 = msg.data[1]
+        right1 = msg.data[2]
+        right2 = msg.data[3]
+
+        self.left =(left1+left2)/2 * self.drive_constant
+        self.right = (right1+right2)/2 * self.drive_constant
 
     def update(self):
+        print("--------------")
+        print(self.left,self.right)
+
         now = self.get_clock().now()
 
         elapsed = (now - self.get_clock().now()).nanoseconds / 1e9
 
         # calculate odometry
-        if self.enc_left is None:
+        if self.enc_left or self.enc_right is None:
             d_left = 0
             d_right = 0
         else:

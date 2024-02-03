@@ -8,7 +8,7 @@
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 #include <micro_ros_platformio.h>
-#include <std_msgs/msg/string.h>
+#include <std_msgs/msg/int32_multi_array.h>
 #include <WiFi.h>
 #include "soc/rtc_io_reg.h"
 
@@ -21,8 +21,9 @@ rcl_allocator_t allocator;
 rcl_node_t node;
 rcl_subscription_t pwml_subscription;
 rcl_subscription_t pwmr_subscription;
-rcl_publisher_t motor_speeds_publisher;
-std_msgs__msg__String motor_speeds_msg;
+rcl_publisher_t encoder_data__publisher;
+std_msgs__msg__Int32MultiArray encoder_msg;
+int32_t encoderdata[10];  
 
 enum states
 {
@@ -53,11 +54,34 @@ volatile long encoderValue2 = 0;
 volatile long encoderValue3 = 0;
 volatile long encoderValue4 = 0;
 
+volatile long lastEncoderValue1 = 0;
+volatile long lastEncoderValue2 = 0;
+volatile long lastEncoderValue3 = 0;
+volatile long lastEncoderValue4 = 0;
+
+
+
+int16_t ticks_per_rev = 280;
+float ticks_per_meter = 891.26;
+unsigned long lastUpdateTime = 0;
+const int UPDATE_INTERVAL = 100; 
 
 int rpm1 = 0;
 int rpm2 = 0;
 int rpm3 = 0;
 int rpm4 = 0;
+
+int PWM_MIN = 0;   // Minimum PWM value
+int PWM_MAX = 240; // Maximum PWM value
+
+const float RPM_MIN = 0.0;   // Minimum RPM value
+const float RPM_MAX = 200.0; // Maximum RPM value
+
+
+float error1 = 0.0;
+float error2 = 0.0;
+float error3 = 0.0;
+float error4 = 0.0;
 
 
 #define ENCODEROUTPUT 1
@@ -170,21 +194,13 @@ void setMotorSpeed(int motor, int spd)
 
 void setMotorSpeeds(int frontLeftSpeed, int frontRightSpeed, int backRightSpeed, int backLeftSpeed)
 {
-  setMotorSpeed(FRONTLEFT, -frontLeftSpeed);
-  setMotorSpeed(FRONTRIGHT, -frontRightSpeed);
-  setMotorSpeed(BACKRIGHT, backRightSpeed);
-  setMotorSpeed(BACKLEFT, backLeftSpeed);
 
-  char motor_speeds_str[50]; // Adjust the buffer size based on your needs
-  snprintf(motor_speeds_str, sizeof(motor_speeds_str), "%d,%d,%d,%d", frontLeftSpeed, frontRightSpeed, backRightSpeed, backLeftSpeed);
 
-  motor_speeds_msg.data.data = motor_speeds_str;
-  rcl_ret_t publish_status = rcl_publish(&motor_speeds_publisher, &motor_speeds_msg, NULL);
-  if (publish_status != RCL_RET_OK)
-  {
-    Serial.print("Failed to publish motor speeds message. Error code: ");
-    Serial.println(publish_status);
-  }
+  frontLeftSpeed = min(frontLeftSpeed, PWM_MAX);
+  frontRightSpeed = min(frontRightSpeed, PWM_MAX);
+  backRightSpeed = min(backRightSpeed, PWM_MAX);
+  backLeftSpeed = min(backLeftSpeed, PWM_MAX);
+
 }
 
 // Callback function for handling pwml messages
@@ -258,7 +274,7 @@ void destroy_entities()
   rmw_context_t *rmw_context = rcl_context_get_rmw_context(&support.context);
   (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
 
-  rcl_publisher_fini(&motor_speeds_publisher, &node);
+  rcl_publisher_fini(&encoder_data__publisher, &node);
   rclc_executor_fini(&executor);
   rcl_node_fini(&node);
   rclc_support_fini(&support);
@@ -291,10 +307,10 @@ bool create_entities()
       "/pwmr");
 
   rclc_publisher_init_default(
-      &motor_speeds_publisher,
+      &encoder_data__publisher,
       &node,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
-      "/motor_speeds");
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32MultiArray),
+      "/encoderdata");
 
   rclc_executor_add_subscription(
       &executor,
@@ -312,9 +328,20 @@ bool create_entities()
   return true;
 }
 
+
+int pwmToRPM(int pwm, int minPWM, int maxPWM, int minRPM, int maxRPM) {
+    // Ensure that pwm is within the specified range
+    pwm = constrain(pwm, minPWM, maxPWM);
+
+    // Map pwm to RPM using linear interpolation
+    return map(pwm, minPWM, maxPWM, minRPM, maxRPM);
+}
+
+
+
 void setup()
 {
-  IPAddress agent_ip(192, 168, 20, 151);
+  IPAddress agent_ip(192, 168, 254, 151);
   size_t agent_port = 8888;
 
   Serial.begin(115200);
@@ -322,19 +349,19 @@ void setup()
 
   //         TO ENABLE SERIAL
 
-  // set_microros_serial_transports(Serial);
+  set_microros_serial_transports(Serial);
 
 
 
   //          TO ENABLE WIFI
   
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
-    set_microros_wifi_transports(ssid, psk, agent_ip, agent_port);
-    delay(1000);
-  }
+  // while (WiFi.status() != WL_CONNECTED)
+  // {
+  //   Serial.print("Attempting to connect to SSID: ");
+  //   Serial.println(ssid);
+  //   set_microros_wifi_transports(ssid, psk, agent_ip, agent_port);
+  //   delay(1000);
+  // }
 
   Serial.println("Connected to wifi");
 
@@ -346,6 +373,8 @@ void setup()
   encoderValue2 = 0;
   encoderValue3 = 0;
   encoderValue4 = 0;
+  encoder_msg.data.data = encoderdata;
+  encoder_msg.data.size = 10;  // Assuming you have 4 motors
 
   initMotorController();
   EncoderInit();
@@ -355,40 +384,30 @@ void setup()
 void loop()
 { 
   
-  Serial.println("=======================");
+  unsigned long currentTime = millis();
+  unsigned long elapsedTime = currentTime - lastUpdateTime;
 
-  Serial.print(encoderValue1);
-  Serial.print(" - ");
+  if (elapsedTime >= UPDATE_INTERVAL)
+  {
+    float timeInSeconds = elapsedTime / 1000.0; // Convert time to seconds
 
-  Serial.print(encoderValue2);
-  Serial.print(" - ");
+    // Calculate RPM for each motor based on the change in encoder values
+    rpm1 = (encoderValue1 - lastEncoderValue1) * 60 / (ticks_per_rev * timeInSeconds);
+    rpm2 = (encoderValue2 - lastEncoderValue2) * 60 / (ticks_per_rev * timeInSeconds);
+    rpm3 = (encoderValue3 - lastEncoderValue3) * 60 / (ticks_per_rev * timeInSeconds);
+    rpm4 = (encoderValue4 - lastEncoderValue4) * 60 / (ticks_per_rev * timeInSeconds);
 
-  Serial.print(encoderValue3);
-  Serial.print(" - ");
+    // Update last encoder values for the next calculation
+    lastEncoderValue1 = encoderValue1;
+    lastEncoderValue2 = encoderValue2;
+    lastEncoderValue3 = encoderValue3;
+    lastEncoderValue4 = encoderValue4;
 
-  Serial.print(encoderValue4);
-  Serial.print(" - ");
-
-  Serial.print("---------------------------");
-
-  rpm1 = (float)(encoderValue1 / ENCODEROUTPUT) * 60 / GEARRATIO;
-  rpm2 = (float)(encoderValue2 / ENCODEROUTPUT) * 60 / GEARRATIO;
-  rpm3 = (float)(encoderValue3 / ENCODEROUTPUT) * 60 / GEARRATIO;
-  rpm4 = (float)(encoderValue4 / ENCODEROUTPUT) * 60 / GEARRATIO;
-
-  // if (rpm1 > 0 || rpm2 > 0 || rpm3 > 0 || rpm4 > 0) {
-  //   Serial.print("Motor 1 RPM: ");
-  //   Serial.println(rpm1);
-  //   Serial.print("Motor 2 RPM: ");
-  //   Serial.println(rpm2);
-  //   Serial.print("Motor 3 RPM: ");
-  //   Serial.println(rpm3);
-  //   Serial.print("Motor 4 RPM: ");
-  //   Serial.println(rpm4);
-  // }
+    lastUpdateTime = currentTime;
+  }
 
 
-  
+
 
   switch (state)
   {
@@ -418,6 +437,59 @@ void loop()
     break;
   }
 
+
+
+  float desiredRPM_L = RPM_MIN + (RPM_MAX - RPM_MIN) * (received_pwml_data - PWM_MIN) / (PWM_MAX - PWM_MIN);
+
+    // Ensure the calculated RPM is within the desired range
+    desiredRPM_L = constrain(desiredRPM_L, RPM_MIN, RPM_MAX);
+
+  float desiredRPM_R = RPM_MIN + (RPM_MAX - RPM_MIN) * (received_pwmr_data - PWM_MIN) / (PWM_MAX - PWM_MIN);
+
+    // Ensure the calculated RPM is within the desired range
+    desiredRPM_R = constrain(desiredRPM_R, RPM_MIN, RPM_MAX);
+
+
+//     FOOR MAP PWM_RPM
+
+  // int desiredRPM_L = pwmToRPM(received_pwml_data, 0, 255, 0.0, 200);
+  // int desiredRPM_R = pwmToRPM(received_pwmr_data, 0, 255, 0.0, 200);
+
+
+  encoderdata[0]=encoderValue1;
+  encoderdata[1]=encoderValue2;
+  encoderdata[2]=encoderValue3;
+  encoderdata[3]=encoderValue4;
+  encoderdata[4]=desiredRPM_L;
+  encoderdata[5]=desiredRPM_R;
+
+  encoderdata[6]=rpm1;
+  encoderdata[7]=rpm2;
+  encoderdata[8]=rpm3;
+  encoderdata[9]=rpm4;
+
+  // ----------P-Controller------------//
+
+  error1=desiredRPM_L-rpm1;
+  error2=desiredRPM_L-rpm2;
+  error3=desiredRPM_R-rpm3;
+  error4=desiredRPM_R-rpm4;
+
+  // -------------------------//
+
+
+
+
+  encoder_msg.data.data = encoderdata;
+  rcl_ret_t publish_status = rcl_publish(&encoder_data__publisher, &encoder_msg, NULL);
+  if (publish_status != RCL_RET_OK)
+  {
+    Serial.print("Failed to publish motor speeds message. Error code: ");
+    Serial.println(publish_status);
+  }
+
+
+  
   if (state == AGENT_CONNECTED)
   {
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));

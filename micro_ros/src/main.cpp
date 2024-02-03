@@ -48,7 +48,6 @@ const int HALLSEN_B3 = 19; // Hall sensor A connected to pin 3 (external interru
 const int HALLSEN_A4 = 13; // Hall sensor A connected to pin 3 (external interrupt)
 const int HALLSEN_B4 = 17; // Hall sensor A connected to pin 3 (external interrupt)
 
-//The sample code for driving one way motor encoder
 volatile long encoderValue1 = 0;
 volatile long encoderValue2 = 0;
 volatile long encoderValue3 = 0;
@@ -195,11 +194,11 @@ void setMotorSpeed(int motor, int spd)
 void setMotorSpeeds(int frontLeftSpeed, int frontRightSpeed, int backRightSpeed, int backLeftSpeed)
 {
 
-
-  frontLeftSpeed = min(frontLeftSpeed, PWM_MAX);
-  frontRightSpeed = min(frontRightSpeed, PWM_MAX);
-  backRightSpeed = min(backRightSpeed, PWM_MAX);
-  backLeftSpeed = min(backLeftSpeed, PWM_MAX);
+   
+  setMotorSpeed(FRONTLEFT, -min(frontLeftSpeed, PWM_MAX));
+  setMotorSpeed(FRONTRIGHT, -min(frontRightSpeed, PWM_MAX));
+  setMotorSpeed(BACKRIGHT, min(backRightSpeed, PWM_MAX));
+  setMotorSpeed(BACKLEFT, min(backLeftSpeed, PWM_MAX));
 
 }
 

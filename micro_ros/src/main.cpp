@@ -10,6 +10,7 @@
 #include <micro_ros_platformio.h>
 #include <std_msgs/msg/string.h>
 #include <WiFi.h>
+#include "soc/rtc_io_reg.h"
 
 int16_t received_pwml_data = 0; // Global variable to store received pwml data
 int16_t received_pwmr_data = 0; // Global variable to store received pwmr data
@@ -30,6 +31,39 @@ enum states
   AGENT_CONNECTED,
   AGENT_DISCONNECTED
 } state;
+
+
+//   ##################################################################
+
+const int HALLSEN_A = 14; // Hall sensor A connected to pin 3 (external interrupt)
+const int HALLSEN_B = 27; // Hall sensor A connected to pin 3 (external interrupt)
+
+const int HALLSEN_A2 = 25; // Hall sensor A connected to pin 3 (external interrupt)
+const int HALLSEN_B2 = 26; // Hall sensor A connected to pin 3 (external interrupt)
+
+const int HALLSEN_A3 = 18; // Hall sensor A connected to pin 3 (external interrupt)
+const int HALLSEN_B3 = 19; // Hall sensor A connected to pin 3 (external interrupt)
+
+const int HALLSEN_A4 = 13; // Hall sensor A connected to pin 3 (external interrupt)
+const int HALLSEN_B4 = 17; // Hall sensor A connected to pin 3 (external interrupt)
+
+//The sample code for driving one way motor encoder
+volatile long encoderValue1 = 0;
+volatile long encoderValue2 = 0;
+volatile long encoderValue3 = 0;
+volatile long encoderValue4 = 0;
+
+
+int rpm1 = 0;
+int rpm2 = 0;
+int rpm3 = 0;
+int rpm4 = 0;
+
+
+#define ENCODEROUTPUT 1
+#define GEARRATIO 50
+
+//   ##################################################################
 
 char ssid[] = "lg";
 char psk[] = "krrish2002";
@@ -70,6 +104,16 @@ void initMotorController()
   }
 
   AFMS.begin(); // create with the default frequency 1.6KHz
+
+  pinMode(HALLSEN_A, INPUT);
+  pinMode(HALLSEN_B, INPUT);
+  pinMode(HALLSEN_A2, INPUT);
+  pinMode(HALLSEN_B2, INPUT);
+  pinMode(HALLSEN_A3, INPUT);
+  pinMode(HALLSEN_B3, INPUT);
+  pinMode(HALLSEN_A4, INPUT);
+  pinMode(HALLSEN_B4, INPUT);
+
 
   frontLeftMotor->setSpeed(100);
   backLeftMotor->setSpeed(100);
@@ -157,6 +201,56 @@ void pwmr_callback(const void *msg_recv)
   received_pwmr_data = received_data->data;
 }
 
+
+
+
+
+void updateEncoder1() {
+
+
+  if (digitalRead(HALLSEN_A) == digitalRead(HALLSEN_B)) {
+    encoderValue1--;
+  } else {
+    encoderValue1++;
+  }
+}
+
+void updateEncoder2() {
+
+  if (digitalRead(HALLSEN_A2) == digitalRead(HALLSEN_B2)) {
+    encoderValue2--;
+  } else {
+    encoderValue2++;
+  }
+}
+
+void updateEncoder3() {
+  if (digitalRead(HALLSEN_A3) == digitalRead(HALLSEN_B3)) {
+    encoderValue3--;
+  } else {
+    encoderValue3++;
+  }
+}
+
+void updateEncoder4() {
+  if (digitalRead(HALLSEN_A4) == digitalRead(HALLSEN_B4)) {
+    encoderValue4--;
+  } else {
+    encoderValue4++;
+  }
+}
+
+void EncoderInit() {
+  attachInterrupt(digitalPinToInterrupt(HALLSEN_A), updateEncoder1, CHANGE);
+
+  attachInterrupt(digitalPinToInterrupt(HALLSEN_A2), updateEncoder2, CHANGE);
+
+  attachInterrupt(digitalPinToInterrupt(HALLSEN_A3), updateEncoder3, CHANGE);
+
+  attachInterrupt(digitalPinToInterrupt(HALLSEN_A4), updateEncoder4, CHANGE);
+}
+
+
 void destroy_entities()
 {
   setMotorSpeeds(0, 0, 0, 0);
@@ -220,7 +314,7 @@ bool create_entities()
 
 void setup()
 {
-  IPAddress agent_ip(192, 168, 9, 151);
+  IPAddress agent_ip(192, 168, 20, 151);
   size_t agent_port = 8888;
 
   Serial.begin(115200);
@@ -248,14 +342,53 @@ void setup()
 
   Wire.begin(33, 32);
 
+  encoderValue1 = 0;
+  encoderValue2 = 0;
+  encoderValue3 = 0;
+  encoderValue4 = 0;
+
   initMotorController();
+  EncoderInit();
 }
 
-void loop()
-{
-  Serial.println("state");
 
-  Serial.println(state);
+void loop()
+{ 
+  
+  Serial.println("=======================");
+
+  Serial.print(encoderValue1);
+  Serial.print(" - ");
+
+  Serial.print(encoderValue2);
+  Serial.print(" - ");
+
+  Serial.print(encoderValue3);
+  Serial.print(" - ");
+
+  Serial.print(encoderValue4);
+  Serial.print(" - ");
+
+  Serial.print("---------------------------");
+
+  rpm1 = (float)(encoderValue1 / ENCODEROUTPUT) * 60 / GEARRATIO;
+  rpm2 = (float)(encoderValue2 / ENCODEROUTPUT) * 60 / GEARRATIO;
+  rpm3 = (float)(encoderValue3 / ENCODEROUTPUT) * 60 / GEARRATIO;
+  rpm4 = (float)(encoderValue4 / ENCODEROUTPUT) * 60 / GEARRATIO;
+
+  // if (rpm1 > 0 || rpm2 > 0 || rpm3 > 0 || rpm4 > 0) {
+  //   Serial.print("Motor 1 RPM: ");
+  //   Serial.println(rpm1);
+  //   Serial.print("Motor 2 RPM: ");
+  //   Serial.println(rpm2);
+  //   Serial.print("Motor 3 RPM: ");
+  //   Serial.println(rpm3);
+  //   Serial.print("Motor 4 RPM: ");
+  //   Serial.println(rpm4);
+  // }
+
+
+  
 
   switch (state)
   {
@@ -287,7 +420,6 @@ void loop()
 
   if (state == AGENT_CONNECTED)
   {
-    Serial.println("START");
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
 
     setMotorSpeeds(received_pwml_data, received_pwmr_data, received_pwml_data, received_pwmr_data);

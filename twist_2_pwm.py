@@ -9,10 +9,10 @@ from math import pi
 class DifferentialDriver:
     def __init__(self):
         self.wheel_diameter = 0.10
-        self.motor_rpm = 170
+        self.motor_rpm = 200
         self.max_pwm_val = 170
         self.min_pwm_val = -150
-        self.wheel_separation = 0.2
+        self.wheel_separation = 0.24
         self.ka= 5.0
         self.kl= 1.2
 

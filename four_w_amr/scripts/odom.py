@@ -1,9 +1,14 @@
+#!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Quaternion, TransformStamped
+from tf2_msgs.msg import TFMessage
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Int32MultiArray
 from math import cos, sin
+import tf2_ros
+
 
 class OdomCalculator(Node):
 
@@ -29,7 +34,7 @@ class OdomCalculator(Node):
         self.odom_frame_id = 'odom'
 
         self.odom_publisher = self.create_publisher(Odometry, 'odom', 10)
-        self.tf_broadcaster = self.create_publisher(TransformStamped, 'tf', 10)
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         self.encoder_subscription = self.create_subscription(
             Int32MultiArray,
@@ -102,7 +107,8 @@ class OdomCalculator(Node):
         transform.transform.translation.y = self.y
         transform.transform.translation.z = 0.0
         transform.transform.rotation = quaternion
-        self.tf_broadcaster.publish(transform)
+        self.tf_broadcaster.sendTransform(transform)
+        
 
         # Publish Odometry
         odom = Odometry()

@@ -11,6 +11,8 @@
 #include <std_msgs/msg/int32_multi_array.h>
 #include <WiFi.h>
 #include "soc/rtc_io_reg.h"
+#include <std_msgs/msg/string.h>
+
 
 int16_t received_pwml_data = 0; // Global variable to store received pwml data
 int16_t received_pwmr_data = 0; // Global variable to store received pwmr data
@@ -23,7 +25,12 @@ rcl_subscription_t pwml_subscription;
 rcl_subscription_t pwmr_subscription;
 rcl_publisher_t encoder_data__publisher;
 std_msgs__msg__Int32MultiArray encoder_msg;
+
+rcl_publisher_t motor_data_publisher;
+std_msgs__msg__String motor_data_msg;
+
 int32_t encoderdata[10];  
+float error[5];  
 
 enum states
 {
@@ -81,6 +88,10 @@ float error1 = 0.0;
 float error2 = 0.0;
 float error3 = 0.0;
 float error4 = 0.0;
+
+float kp =2.0;
+float kd =0.1;
+float ki =0.1;
 
 
 #define ENCODEROUTPUT 1
@@ -224,9 +235,9 @@ void updateEncoder1() {
 
 
   if (digitalRead(HALLSEN_A) == digitalRead(HALLSEN_B)) {
-    encoderValue1--;
-  } else {
     encoderValue1++;
+  } else {
+    encoderValue1--;
   }
 }
 
@@ -253,6 +264,36 @@ void updateEncoder4() {
   } else {
     encoderValue4++;
   }
+}
+
+
+
+float pid(int desire, int actual, float min_val_, float max_val_)
+{
+    static double integral_ = 0; // Make it static to preserve its value between function calls
+    static double prev_error_ = 0; // Make it static to preserve its value between function calls
+
+    double error = desire - actual;
+    integral_ += error;
+    double derivative_ = error - prev_error_;
+
+    if (desire == 0 && error == 0)
+    {
+        integral_ = 0;
+        derivative_ = 0;
+    }
+
+    double pid = (kp * error) + (ki * integral_) + (kd * derivative_);
+    prev_error_ = error;
+
+    char motor_data_str[30]; // Adjust the buffer size based on your needs
+    snprintf(motor_data_str, sizeof(motor_data_str), "%d,%d", error, pid);
+
+    motor_data_msg.data.data = motor_data_str;
+    rcl_publish(&motor_data_publisher, &motor_data_msg, NULL);
+  
+
+    return constrain(pid, min_val_, max_val_);
 }
 
 void EncoderInit() {
@@ -311,6 +352,13 @@ bool create_entities()
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32MultiArray),
       "/encoderdata");
 
+  rclc_publisher_init_default(
+      &motor_data_publisher,
+      &node,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
+      "/motor_data");
+
+
   rclc_executor_add_subscription(
       &executor,
       &pwml_subscription,
@@ -340,7 +388,7 @@ int pwmToRPM(int pwm, int minPWM, int maxPWM, int minRPM, int maxRPM) {
 
 void setup()
 {
-  IPAddress agent_ip(192, 168, 254, 151);
+  IPAddress agent_ip(192, 168, 75, 55);
   size_t agent_port = 8888;
 
   Serial.begin(115200);
@@ -358,6 +406,7 @@ void setup()
   // {
   //   Serial.print("Attempting to connect to SSID: ");
   //   Serial.println(ssid);
+  //   // WiFi.begin(ssid,psk);
   //   set_microros_wifi_transports(ssid, psk, agent_ip, agent_port);
   //   delay(1000);
   // }
@@ -373,7 +422,7 @@ void setup()
   encoderValue3 = 0;
   encoderValue4 = 0;
   encoder_msg.data.data = encoderdata;
-  encoder_msg.data.size = 10;  // Assuming you have 4 motors
+  encoder_msg.data.size = 10;  
 
   initMotorController();
   EncoderInit();
@@ -382,7 +431,7 @@ void setup()
 
 void loop()
 { 
-  
+  Serial.println(state);
   unsigned long currentTime = millis();
   unsigned long elapsedTime = currentTime - lastUpdateTime;
 
@@ -391,10 +440,10 @@ void loop()
     float timeInSeconds = elapsedTime / 1000.0; // Convert time to seconds
 
     // Calculate RPM for each motor based on the change in encoder values
-    rpm1 = (encoderValue1 - lastEncoderValue1) * 60 / (ticks_per_rev * timeInSeconds);
-    rpm2 = (encoderValue2 - lastEncoderValue2) * 60 / (ticks_per_rev * timeInSeconds);
-    rpm3 = (encoderValue3 - lastEncoderValue3) * 60 / (ticks_per_rev * timeInSeconds);
-    rpm4 = (encoderValue4 - lastEncoderValue4) * 60 / (ticks_per_rev * timeInSeconds);
+    rpm1 = (encoderValue1 - lastEncoderValue1) * 60 / (ticks_per_rev * timeInSeconds);  // LEFT BACK
+    rpm2 = (encoderValue2 - lastEncoderValue2) * 60 / (ticks_per_rev * timeInSeconds);  // RIGHT FRONT
+    rpm3 = (encoderValue3 - lastEncoderValue3) * 60 / (ticks_per_rev * timeInSeconds);  // RIGHT BACK
+    rpm4 = (encoderValue4 - lastEncoderValue4) * 60 / (ticks_per_rev * timeInSeconds);  // LEFT FRONT
 
     // Update last encoder values for the next calculation
     lastEncoderValue1 = encoderValue1;
@@ -438,12 +487,12 @@ void loop()
 
 
 
-  float desiredRPM_L = RPM_MIN + (RPM_MAX - RPM_MIN) * (received_pwml_data - PWM_MIN) / (PWM_MAX - PWM_MIN);
+  float desiredRPM_L = RPM_MIN + (RPM_MAX - RPM_MIN) * (abs(received_pwml_data) - PWM_MIN) / (PWM_MAX - PWM_MIN);
 
     // Ensure the calculated RPM is within the desired range
     desiredRPM_L = constrain(desiredRPM_L, RPM_MIN, RPM_MAX);
 
-  float desiredRPM_R = RPM_MIN + (RPM_MAX - RPM_MIN) * (received_pwmr_data - PWM_MIN) / (PWM_MAX - PWM_MIN);
+  float desiredRPM_R = RPM_MIN + (RPM_MAX - RPM_MIN) * (abs(received_pwmr_data) - PWM_MIN) / (PWM_MAX - PWM_MIN);
 
     // Ensure the calculated RPM is within the desired range
     desiredRPM_R = constrain(desiredRPM_R, RPM_MIN, RPM_MAX);
@@ -469,13 +518,19 @@ void loop()
 
   // ----------P-Controller------------//
 
-  error1=desiredRPM_L-rpm1;
-  error2=desiredRPM_L-rpm2;
-  error3=desiredRPM_R-rpm3;
-  error4=desiredRPM_R-rpm4;
+  // error1=abs(abs(desiredRPM_L)-abs(rpm4));
+  error1=pid(abs(desiredRPM_L),abs(rpm4),0.0,2.0);
+
+  // error2=abs(abs(desiredRPM_R)-abs(rpm2));
+  error2=pid(abs(desiredRPM_R),abs(rpm2),0.0,2.0);
+
+  // error3=abs(abs(desiredRPM_L)-abs(rpm1));
+  error3=pid(abs(desiredRPM_L),abs(rpm1),0.0,2.0);
+
+  // error4=abs(abs(desiredRPM_R)-abs(rpm3));
+  error4=pid(abs(desiredRPM_R),abs(rpm3),0.0,2.0);
 
   // -------------------------//
-
 
 
 

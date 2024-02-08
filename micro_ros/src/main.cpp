@@ -30,7 +30,6 @@ rcl_publisher_t motor_data_publisher;
 std_msgs__msg__String motor_data_msg;
 
 int32_t encoderdata[10];  
-float error[5];  
 
 enum states
 {
@@ -68,7 +67,7 @@ volatile long lastEncoderValue4 = 0;
 
 
 int16_t ticks_per_rev = 280;
-float ticks_per_meter = 891.26;
+float ticks_per_meter = 887.5;
 unsigned long lastUpdateTime = 0;
 const int UPDATE_INTERVAL = 100; 
 
@@ -77,10 +76,10 @@ int rpm2 = 0;
 int rpm3 = 0;
 int rpm4 = 0;
 
-int PWM_MIN = 0;   // Minimum PWM value
+int PWM_MIN = -240;   // Minimum PWM value
 int PWM_MAX = 240; // Maximum PWM value
 
-const float RPM_MIN = 0.0;   // Minimum RPM value
+const float RPM_MIN = -200.0;   // Minimum RPM value
 const float RPM_MAX = 200.0; // Maximum RPM value
 
 
@@ -89,9 +88,9 @@ float error2 = 0.0;
 float error3 = 0.0;
 float error4 = 0.0;
 
-float kp =2.0;
-float kd =0.1;
-float ki =0.1;
+float kp =0.12;
+float kd =0.06;
+float ki =0.0045;
 
 
 #define ENCODEROUTPUT 1
@@ -206,10 +205,10 @@ void setMotorSpeeds(int frontLeftSpeed, int frontRightSpeed, int backRightSpeed,
 {
 
    
-  setMotorSpeed(FRONTLEFT, -min(frontLeftSpeed, PWM_MAX));
-  setMotorSpeed(FRONTRIGHT, -min(frontRightSpeed, PWM_MAX));
-  setMotorSpeed(BACKRIGHT, min(backRightSpeed, PWM_MAX));
-  setMotorSpeed(BACKLEFT, min(backLeftSpeed, PWM_MAX));
+  setMotorSpeed(FRONTLEFT, -constrain(frontLeftSpeed,PWM_MIN, PWM_MAX));
+  setMotorSpeed(FRONTRIGHT, -constrain(frontRightSpeed,PWM_MIN, PWM_MAX));
+  setMotorSpeed(BACKRIGHT, constrain(backRightSpeed,PWM_MIN, PWM_MAX));
+  setMotorSpeed(BACKLEFT, constrain(backLeftSpeed,PWM_MIN, PWM_MAX));
 
 }
 
@@ -270,10 +269,14 @@ void updateEncoder4() {
 
 float pid(int desire, int actual, float min_val_, float max_val_)
 {
+    static double error =0;  
+
     static double integral_ = 0; // Make it static to preserve its value between function calls
     static double prev_error_ = 0; // Make it static to preserve its value between function calls
 
-    double error = desire - actual;
+
+    error = desire - actual;
+
     integral_ += error;
     double derivative_ = error - prev_error_;
 
@@ -285,13 +288,10 @@ float pid(int desire, int actual, float min_val_, float max_val_)
 
     double pid = (kp * error) + (ki * integral_) + (kd * derivative_);
     prev_error_ = error;
+    
 
-    char motor_data_str[30]; // Adjust the buffer size based on your needs
-    snprintf(motor_data_str, sizeof(motor_data_str), "%d,%d", error, pid);
 
-    motor_data_msg.data.data = motor_data_str;
-    rcl_publish(&motor_data_publisher, &motor_data_msg, NULL);
-  
+    // return (pid);
 
     return constrain(pid, min_val_, max_val_);
 }
@@ -388,7 +388,7 @@ int pwmToRPM(int pwm, int minPWM, int maxPWM, int minRPM, int maxRPM) {
 
 void setup()
 {
-  IPAddress agent_ip(192, 168, 75, 55);
+  IPAddress agent_ip(192, 168, 145, 151);
   size_t agent_port = 8888;
 
   Serial.begin(115200);
@@ -487,21 +487,21 @@ void loop()
 
 
 
-  float desiredRPM_L = RPM_MIN + (RPM_MAX - RPM_MIN) * (abs(received_pwml_data) - PWM_MIN) / (PWM_MAX - PWM_MIN);
+  // float desiredRPM_L = RPM_MIN + (RPM_MAX - RPM_MIN) * (abs(received_pwml_data) - PWM_MIN) / (PWM_MAX - PWM_MIN);
 
-    // Ensure the calculated RPM is within the desired range
-    desiredRPM_L = constrain(desiredRPM_L, RPM_MIN, RPM_MAX);
+  //   // Ensure the calculated RPM is within the desired range
+  //   desiredRPM_L = constrain(desiredRPM_L, RPM_MIN, RPM_MAX);
 
-  float desiredRPM_R = RPM_MIN + (RPM_MAX - RPM_MIN) * (abs(received_pwmr_data) - PWM_MIN) / (PWM_MAX - PWM_MIN);
+  // float desiredRPM_R = RPM_MIN + (RPM_MAX - RPM_MIN) * (abs(received_pwmr_data) - PWM_MIN) / (PWM_MAX - PWM_MIN);
 
-    // Ensure the calculated RPM is within the desired range
-    desiredRPM_R = constrain(desiredRPM_R, RPM_MIN, RPM_MAX);
+  //   // Ensure the calculated RPM is within the desired range
+  //   desiredRPM_R = constrain(desiredRPM_R, RPM_MIN, RPM_MAX);
 
 
 //     FOOR MAP PWM_RPM
 
-  // int desiredRPM_L = pwmToRPM(received_pwml_data, 0, 255, 0.0, 200);
-  // int desiredRPM_R = pwmToRPM(received_pwmr_data, 0, 255, 0.0, 200);
+  int desiredRPM_L = pwmToRPM(received_pwml_data, PWM_MIN, PWM_MAX, RPM_MIN, RPM_MAX);
+  int desiredRPM_R = pwmToRPM(received_pwmr_data, PWM_MIN, PWM_MAX, RPM_MIN, RPM_MAX);
 
 
   encoderdata[0]=encoderValue1;
@@ -516,22 +516,25 @@ void loop()
   encoderdata[8]=rpm3;
   encoderdata[9]=rpm4;
 
-  // ----------P-Controller------------//
+  // ----------P-Controllerint------------//
 
   // error1=abs(abs(desiredRPM_L)-abs(rpm4));
-  error1=pid(abs(desiredRPM_L),abs(rpm4),0.0,2.0);
+  error1=pid((desiredRPM_L),(rpm1),-160.0,160.0);
 
   // error2=abs(abs(desiredRPM_R)-abs(rpm2));
-  error2=pid(abs(desiredRPM_R),abs(rpm2),0.0,2.0);
+  error2=pid((desiredRPM_R),(rpm3),-160.0,160.0);
 
   // error3=abs(abs(desiredRPM_L)-abs(rpm1));
-  error3=pid(abs(desiredRPM_L),abs(rpm1),0.0,2.0);
+  error3=pid((desiredRPM_L),(rpm4),-160.0,160.0);
 
   // error4=abs(abs(desiredRPM_R)-abs(rpm3));
-  error4=pid(abs(desiredRPM_R),abs(rpm3),0.0,2.0);
+  error4=pid((desiredRPM_R),(rpm2),-160.0,160.0);
 
   // -------------------------//
-
+  char motor_data_str[80]; // Adjust the buffer size based on your needs
+  snprintf(motor_data_str, sizeof(motor_data_str), "ERROR---- %.2f,%.2f,%.2f,%.2f ------",error1,error2,error3,error4);
+  motor_data_msg.data.data = motor_data_str;
+  rcl_publish(&motor_data_publisher, &motor_data_msg, NULL);
 
 
   encoder_msg.data.data = encoderdata;
@@ -548,7 +551,9 @@ void loop()
   {
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
 
-    setMotorSpeeds(received_pwml_data, received_pwmr_data, received_pwml_data, received_pwmr_data);
+    setMotorSpeeds(received_pwml_data+error1, received_pwmr_data+error2, received_pwml_data+error3, received_pwmr_data+error4);
+    // setMotorSpeeds(0.0,0.0, 0.0, received_pwmr_data+error4);
+
   }
   else
   {

@@ -15,14 +15,14 @@ class OdomCalculator(Node):
     def __init__(self):
         super().__init__('odom_calculator')
         
-        self.ticks_meter = 891.26  # You need to set this value based on your encoder ticks and wheel diameter
-        self.base_width = 0.24  # Set the base width of your 4WD robot
+        self.ticks_meter = 887.5  # You need to set this value based on your encoder ticks and wheel diameter
+        self.base_width = 0.39  # Set the base width of your 4WD robot
 
-        self.enc_left = None
-        self.enc_right = None
+        self.enc_left = 0.0
+        self.enc_right = 0.0
         self.drive_constant = 1.0
-        self.left = 0
-        self.right = 0
+        self.left = 0.0
+        self.right = 0.0
 
         self.x = 0.0
         self.y = 0.0
@@ -52,9 +52,11 @@ class OdomCalculator(Node):
         right1 = msg.data[2]
         right2 = msg.data[3]
 
-        self.left =(left1+left2)/2 * self.drive_constant
-        self.right = (right1+right2)/2 * self.drive_constant
+        # self.left =(left1+left2)/2 * self.drive_constant
+        # self.right = (right1+right2)/2 * self.drive_constant
 
+        self.left =left1 * self.drive_constant
+        self.right = right1 * self.drive_constant
     def update(self):
         print("--------------")
         print(self.left,self.right)
@@ -64,7 +66,7 @@ class OdomCalculator(Node):
         elapsed = (now - self.get_clock().now()).nanoseconds / 1e9
 
         # calculate odometry
-        if self.enc_left or self.enc_right is None:
+        if self.enc_left and self.enc_right is None:
             d_left = 0
             d_right = 0
         else:

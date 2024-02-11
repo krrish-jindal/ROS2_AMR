@@ -388,7 +388,7 @@ int pwmToRPM(int pwm, int minPWM, int maxPWM, int minRPM, int maxRPM) {
 
 void setup()
 {
-  IPAddress agent_ip(192, 168, 145, 151);
+  IPAddress agent_ip(192, 168, 159, 77);
   size_t agent_port = 8888;
 
   Serial.begin(115200);
@@ -406,7 +406,7 @@ void setup()
   // {
   //   Serial.print("Attempting to connect to SSID: ");
   //   Serial.println(ssid);
-  //   // WiFi.begin(ssid,psk);
+  //   WiFi.begin(ssid,psk);
   //   set_microros_wifi_transports(ssid, psk, agent_ip, agent_port);
   //   delay(1000);
   // }
@@ -460,7 +460,7 @@ void loop()
   switch (state)
   {
   case WAITING_AGENT:
-    EXECUTE_EVERY_N_MS(1000, state = (RMW_RET_OK == rmw_uros_ping_agent(50, 1)) ? AGENT_AVAILABLE : WAITING_AGENT;);
+    EXECUTE_EVERY_N_MS(1000, state = (RMW_RET_OK == rmw_uros_ping_agent(500, 1)) ? AGENT_AVAILABLE : WAITING_AGENT;);
     break;
   case AGENT_AVAILABLE:
     state = (true == create_entities()) ? AGENT_CONNECTED : WAITING_AGENT;
@@ -470,7 +470,7 @@ void loop()
     };
     break;
   case AGENT_CONNECTED:
-    EXECUTE_EVERY_N_MS(1000, state = (RMW_RET_OK == rmw_uros_ping_agent(50, 1)) ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
+    EXECUTE_EVERY_N_MS(1000, state = (RMW_RET_OK == rmw_uros_ping_agent(500, 1)) ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
     if (state == AGENT_CONNECTED)
     {
       Serial.println("CONNECTION ESTABLISHED");
@@ -486,19 +486,7 @@ void loop()
   }
 
 
-
-  // float desiredRPM_L = RPM_MIN + (RPM_MAX - RPM_MIN) * (abs(received_pwml_data) - PWM_MIN) / (PWM_MAX - PWM_MIN);
-
-  //   // Ensure the calculated RPM is within the desired range
-  //   desiredRPM_L = constrain(desiredRPM_L, RPM_MIN, RPM_MAX);
-
-  // float desiredRPM_R = RPM_MIN + (RPM_MAX - RPM_MIN) * (abs(received_pwmr_data) - PWM_MIN) / (PWM_MAX - PWM_MIN);
-
-  //   // Ensure the calculated RPM is within the desired range
-  //   desiredRPM_R = constrain(desiredRPM_R, RPM_MIN, RPM_MAX);
-
-
-//     FOOR MAP PWM_RPM
+//     FOR MAP PWM_RPM
 
   int desiredRPM_L = pwmToRPM(received_pwml_data, PWM_MIN, PWM_MAX, RPM_MIN, RPM_MAX);
   int desiredRPM_R = pwmToRPM(received_pwmr_data, PWM_MIN, PWM_MAX, RPM_MIN, RPM_MAX);
@@ -531,7 +519,7 @@ void loop()
   error4=pid((desiredRPM_R),(rpm2),-160.0,160.0);
 
   // -------------------------//
-  char motor_data_str[80]; // Adjust the buffer size based on your needs
+  char motor_data_str[50]; // Adjust the buffer size based on your needs
   snprintf(motor_data_str, sizeof(motor_data_str), "ERROR---- %.2f,%.2f,%.2f,%.2f ------",error1,error2,error3,error4);
   motor_data_msg.data.data = motor_data_str;
   rcl_publish(&motor_data_publisher, &motor_data_msg, NULL);

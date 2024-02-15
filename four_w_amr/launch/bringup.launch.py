@@ -6,6 +6,12 @@ from launch.actions import DeclareLaunchArgument, LogInfo
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch.substitutions import  LaunchConfiguration, PythonExpression
+import time
+from launch.actions import (DeclareLaunchArgument, GroupAction,
+                            IncludeLaunchDescription, SetEnvironmentVariable, ExecuteProcess)
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import ThisLaunchFileDir
+
 
 def generate_launch_description():
 
@@ -16,9 +22,10 @@ def generate_launch_description():
     # Declare the transport_type argument
     transport_type = DeclareLaunchArgument('transport_type', default_value='serial', description='Transport type (e.g., udp4, udp6, tcp4, tcp6, canfd, serial, multiserial, pseudoterminal)')
     # Declare the serial device argument
-    serial_dev = DeclareLaunchArgument('serial_dev', default_value='/dev/ttyMyDevice', description='Serial device')
+    serial_dev = DeclareLaunchArgument('serial_dev', default_value='/dev/ttyLidar', description='Serial device')
     # Declare the baudrate argument
     baudrate = DeclareLaunchArgument('baudrate', default_value='115200', description='Baudrate for serial communication')
+
 
 
     start_twist_to_pwm = Node(
@@ -40,18 +47,23 @@ def generate_launch_description():
         output='screen',
         arguments=[LaunchConfiguration('transport_type'), '--dev', LaunchConfiguration('serial_dev'), '-b', LaunchConfiguration('baudrate')],  # Include the --dev and -b/--baudrate arguments, and -h/--help option
         respawn=True)
+    
+    lidar_launch_file = IncludeLaunchDescription(PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/lidar.launch.py']),)
 
+    
     # Create LaunchDescription object
     ld = LaunchDescription()
 
     # Add the launch arguments to the LaunchDescription
+    # ld.add_action(lidar_launch_file)
+
     ld.add_action(transport_type)
     ld.add_action(serial_dev)
     ld.add_action(baudrate)
+    ld.add_action(micro_ros_agent_node)
 
     # Add the nodes to the LaunchDescription
     ld.add_action(start_twist_to_pwm)
     ld.add_action(start_odom_publisher)
-    ld.add_action(micro_ros_agent_node)
 
     return ld

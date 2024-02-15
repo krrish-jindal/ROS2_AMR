@@ -347,8 +347,8 @@
     </inertial>
     <visual>
       <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
+        xyz="0.08 0 -0.1"
+        rpy="0 0 3.14" />
       <geometry>
         <mesh
           filename="package://four_w_amr/meshes/lidar_link.STL" />
@@ -361,8 +361,8 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
+        xyz="0.08 0 0.1"
+        rpy="0 0 3.14" />
       <geometry>
         <mesh
           filename="package://four_w_amr/meshes/lidar_link.STL" />
@@ -373,8 +373,8 @@
     name="lidar_joint"
     type="fixed">
     <origin
-      xyz="0 0 0"
-      rpy="0 0 0" />
+      xyz="0.08 0 0.1"
+      rpy="0 0 3.14" />
     <parent
       link="base_link" />
     <child

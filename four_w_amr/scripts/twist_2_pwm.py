@@ -83,8 +83,8 @@ class DifferentialDriver:
         left_rpm = (left_vel / (2 * pi * self.wheel_radius)) * 60
         right_rpm = (right_vel / (2 * pi * self.wheel_radius)) * 60
 
-        print(" Left Velocity = {} m/s | Left RPM = {} RPM".format(left_vel, left_rpm))
-        print(" Right Velocity = {} m/s | Right RPM = {} RPM".format(right_vel, right_rpm))
+        # print(" Left Velocity = {} m/s | Left RPM = {} RPM".format(left_vel, left_rpm))
+        # print(" Right Velocity = {} m/s | Right RPM = {} RPM".format(right_vel, right_rpm))
         
         self.left_pwm.data = int(left_pwm_data)
         self.right_pwm.data = int(right_pwm_data)

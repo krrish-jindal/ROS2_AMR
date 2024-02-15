@@ -1,4 +1,4 @@
-//    correction base
+//    new correction base
 
 #include <Arduino.h>
 #include <Adafruit_MotorShield.h>
@@ -12,6 +12,7 @@
 #include <WiFi.h>
 #include "soc/rtc_io_reg.h"
 #include <std_msgs/msg/string.h>
+
 
 
 int16_t received_pwml_data = 0; // Global variable to store received pwml data
@@ -29,7 +30,7 @@ std_msgs__msg__Int32MultiArray encoder_msg;
 rcl_publisher_t motor_data_publisher;
 std_msgs__msg__String motor_data_msg;
 
-int32_t encoderdata[10];  
+int32_t encoderdata[5];  
 
 enum states
 {
@@ -67,7 +68,6 @@ volatile long lastEncoderValue4 = 0;
 
 
 int16_t ticks_per_rev = 280;
-float ticks_per_meter = 887.5;
 unsigned long lastUpdateTime = 0;
 const int UPDATE_INTERVAL = 100; 
 
@@ -88,10 +88,9 @@ float error2 = 0.0;
 float error3 = 0.0;
 float error4 = 0.0;
 
-float kp =0.12;
-float kd =0.06;
-float ki =0.0045;
-
+float kp =0.15;
+float kd =0.12;
+float ki =0.25;
 
 #define ENCODEROUTPUT 1
 #define GEARRATIO 50
@@ -205,10 +204,10 @@ void setMotorSpeeds(int frontLeftSpeed, int frontRightSpeed, int backRightSpeed,
 {
 
    
-  setMotorSpeed(FRONTLEFT, -constrain(frontLeftSpeed,PWM_MIN, PWM_MAX));
-  setMotorSpeed(FRONTRIGHT, -constrain(frontRightSpeed,PWM_MIN, PWM_MAX));
-  setMotorSpeed(BACKRIGHT, constrain(backRightSpeed,PWM_MIN, PWM_MAX));
-  setMotorSpeed(BACKLEFT, constrain(backLeftSpeed,PWM_MIN, PWM_MAX));
+  setMotorSpeed(FRONTLEFT, constrain(frontLeftSpeed,PWM_MIN, PWM_MAX));
+  setMotorSpeed(FRONTRIGHT, constrain(frontRightSpeed,PWM_MIN, PWM_MAX));
+  setMotorSpeed(BACKRIGHT, -constrain(backRightSpeed,PWM_MIN, PWM_MAX));
+  setMotorSpeed(BACKLEFT, -constrain(backLeftSpeed,PWM_MIN, PWM_MAX));
 
 }
 
@@ -234,36 +233,38 @@ void updateEncoder1() {
 
 
   if (digitalRead(HALLSEN_A) == digitalRead(HALLSEN_B)) {
-    encoderValue1++;
-  } else {
     encoderValue1--;
+  } else {
+    encoderValue1++;
   }
 }
 
 void updateEncoder2() {
 
   if (digitalRead(HALLSEN_A2) == digitalRead(HALLSEN_B2)) {
-    encoderValue2--;
-  } else {
     encoderValue2++;
+  } else {
+    encoderValue2--;
   }
 }
 
 void updateEncoder3() {
   if (digitalRead(HALLSEN_A3) == digitalRead(HALLSEN_B3)) {
-    encoderValue3--;
-  } else {
     encoderValue3++;
+  } else {
+    encoderValue3--;
   }
 }
 
 void updateEncoder4() {
   if (digitalRead(HALLSEN_A4) == digitalRead(HALLSEN_B4)) {
-    encoderValue4--;
-  } else {
     encoderValue4++;
+  } else {
+    encoderValue4--;
   }
 }
+
+
 
 
 
@@ -273,11 +274,26 @@ float pid(int desire, int actual, float min_val_, float max_val_)
 
     static double integral_ = 0; // Make it static to preserve its value between function calls
     static double prev_error_ = 0; // Make it static to preserve its value between function calls
+    double tolerance_1 = 0.1; 
 
 
     error = desire - actual;
+    if (fabs(fabs(error) - fabs(prev_error_)) <= tolerance_1*fabs(desire) && error !=0.0 ) {
 
-    integral_ += error;
+
+        integral_ += error;
+        if (integral_ > max_val_)
+            integral_ = max_val_;
+        else if (integral_ < min_val_)
+            integral_ = min_val_;
+      
+
+    }
+
+    else if (fabs(fabs(error) - fabs(prev_error_)) > tolerance_1*fabs(desire)) {
+        integral_ =0.0;
+    }
+
     double derivative_ = error - prev_error_;
 
     if (desire == 0 && error == 0)
@@ -290,11 +306,9 @@ float pid(int desire, int actual, float min_val_, float max_val_)
     prev_error_ = error;
     
 
-
-    // return (pid);
-
     return constrain(pid, min_val_, max_val_);
 }
+
 
 void EncoderInit() {
   attachInterrupt(digitalPinToInterrupt(HALLSEN_A), updateEncoder1, CHANGE);
@@ -309,7 +323,6 @@ void EncoderInit() {
 
 void destroy_entities()
 {
-  setMotorSpeeds(0, 0, 0, 0);
 
   rmw_context_t *rmw_context = rcl_context_get_rmw_context(&support.context);
   (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
@@ -388,8 +401,9 @@ int pwmToRPM(int pwm, int minPWM, int maxPWM, int minRPM, int maxRPM) {
 
 void setup()
 {
-  IPAddress agent_ip(192, 168, 159, 77);
+  IPAddress agent_ip(192, 168, 250, 151);
   size_t agent_port = 8888;
+  
 
   Serial.begin(115200);
 
@@ -422,7 +436,7 @@ void setup()
   encoderValue3 = 0;
   encoderValue4 = 0;
   encoder_msg.data.data = encoderdata;
-  encoder_msg.data.size = 10;  
+  encoder_msg.data.size = 5;  
 
   initMotorController();
   EncoderInit();
@@ -440,10 +454,10 @@ void loop()
     float timeInSeconds = elapsedTime / 1000.0; // Convert time to seconds
 
     // Calculate RPM for each motor based on the change in encoder values
-    rpm1 = (encoderValue1 - lastEncoderValue1) * 60 / (ticks_per_rev * timeInSeconds);  // LEFT BACK
-    rpm2 = (encoderValue2 - lastEncoderValue2) * 60 / (ticks_per_rev * timeInSeconds);  // RIGHT FRONT
-    rpm3 = (encoderValue3 - lastEncoderValue3) * 60 / (ticks_per_rev * timeInSeconds);  // RIGHT BACK
-    rpm4 = (encoderValue4 - lastEncoderValue4) * 60 / (ticks_per_rev * timeInSeconds);  // LEFT FRONT
+    rpm1 = (encoderValue1 - lastEncoderValue1) * 60 / (ticks_per_rev * timeInSeconds);  // RIGHT FRONT
+    rpm2 = (encoderValue2 - lastEncoderValue2) * 60 / (ticks_per_rev * timeInSeconds);  // LEFT BACK
+    rpm3 = (encoderValue3 - lastEncoderValue3) * 60 / (ticks_per_rev * timeInSeconds);  // LEFT FRONT
+    rpm4 = (encoderValue4 - lastEncoderValue4) * 60 / (ticks_per_rev * timeInSeconds);  // RIGHT BACK
 
     // Update last encoder values for the next calculation
     lastEncoderValue1 = encoderValue1;
@@ -460,17 +474,18 @@ void loop()
   switch (state)
   {
   case WAITING_AGENT:
-    EXECUTE_EVERY_N_MS(1000, state = (RMW_RET_OK == rmw_uros_ping_agent(500, 1)) ? AGENT_AVAILABLE : WAITING_AGENT;);
+    EXECUTE_EVERY_N_MS(1000, state = (RMW_RET_OK == rmw_uros_ping_agent(100, 1)) ? AGENT_AVAILABLE : WAITING_AGENT;);
     break;
   case AGENT_AVAILABLE:
     state = (true == create_entities()) ? AGENT_CONNECTED : WAITING_AGENT;
     if (state == WAITING_AGENT)
     {
+
       destroy_entities();
     };
     break;
   case AGENT_CONNECTED:
-    EXECUTE_EVERY_N_MS(1000, state = (RMW_RET_OK == rmw_uros_ping_agent(500, 1)) ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
+    EXECUTE_EVERY_N_MS(500, state = (RMW_RET_OK == rmw_uros_ping_agent(100, 1)) ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
     if (state == AGENT_CONNECTED)
     {
       Serial.println("CONNECTION ESTABLISHED");
@@ -478,10 +493,25 @@ void loop()
     break;
 
   case AGENT_DISCONNECTED:
+
     destroy_entities();
     state = WAITING_AGENT;
+    
+    // setMotorSpeeds(0, 0, 0, 0);
+    // memset(encoderdata, 0, sizeof(encoderdata));
+    // encoderValue1 = 0;
+    // encoderValue2 = 0;
+    // encoderValue3 = 0;
+    // encoderValue4 = 0;
+    // ESP.restart();
+    // Serial.println("OVER");
+
     break;
   default:
+    setMotorSpeeds(0, 0, 0, 0);
+
+    // ESP.restart();
+
     break;
   }
 
@@ -496,34 +526,19 @@ void loop()
   encoderdata[1]=encoderValue2;
   encoderdata[2]=encoderValue3;
   encoderdata[3]=encoderValue4;
-  encoderdata[4]=desiredRPM_L;
-  encoderdata[5]=desiredRPM_R;
 
-  encoderdata[6]=rpm1;
-  encoderdata[7]=rpm2;
-  encoderdata[8]=rpm3;
-  encoderdata[9]=rpm4;
 
-  // ----------P-Controllerint------------//
+  // ----------PID-Controller------------//
 
-  // error1=abs(abs(desiredRPM_L)-abs(rpm4));
   error1=pid((desiredRPM_L),(rpm1),-160.0,160.0);
 
-  // error2=abs(abs(desiredRPM_R)-abs(rpm2));
   error2=pid((desiredRPM_R),(rpm3),-160.0,160.0);
 
-  // error3=abs(abs(desiredRPM_L)-abs(rpm1));
   error3=pid((desiredRPM_L),(rpm4),-160.0,160.0);
 
-  // error4=abs(abs(desiredRPM_R)-abs(rpm3));
   error4=pid((desiredRPM_R),(rpm2),-160.0,160.0);
 
   // -------------------------//
-  char motor_data_str[50]; // Adjust the buffer size based on your needs
-  snprintf(motor_data_str, sizeof(motor_data_str), "ERROR---- %.2f,%.2f,%.2f,%.2f ------",error1,error2,error3,error4);
-  motor_data_msg.data.data = motor_data_str;
-  rcl_publish(&motor_data_publisher, &motor_data_msg, NULL);
-
 
   encoder_msg.data.data = encoderdata;
   rcl_ret_t publish_status = rcl_publish(&encoder_data__publisher, &encoder_msg, NULL);
@@ -532,16 +547,24 @@ void loop()
     Serial.print("Failed to publish motor speeds message. Error code: ");
     Serial.println(publish_status);
   }
-
-
   
+
   if (state == AGENT_CONNECTED)
   {
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
 
-    setMotorSpeeds(received_pwml_data+error1, received_pwmr_data+error2, received_pwml_data+error3, received_pwmr_data+error4);
-    // setMotorSpeeds(0.0,0.0, 0.0, received_pwmr_data+error4);
+    setMotorSpeeds(received_pwmr_data+error1, received_pwml_data+error2, received_pwmr_data+error3, received_pwml_data+error4);
 
+  }
+  else if(state == AGENT_DISCONNECTED){
+    setMotorSpeeds(0, 0, 0, 0);
+    memset(encoderdata, 0, sizeof(encoderdata));
+    encoderValue1 = 0;
+    encoderValue2 = 0;
+    encoderValue3 = 0;
+    encoderValue4 = 0;    
+    destroy_entities();
+    ESP.restart();
   }
   else
   {

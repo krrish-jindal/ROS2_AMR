@@ -47,16 +47,16 @@ class OdomCalculator(Node):
     def encoder_callback(self, msg):
 
         # Assuming your encoder data is received as a list [left, right]
-        left1 = msg.data[0]
-        left2 = msg.data[1]
-        right1 = msg.data[2]
-        right2 = msg.data[3]
+        right_f = msg.data[0]
+        left_b = msg.data[1]
+        left_f = msg.data[2]
+        right_b = msg.data[3]
 
         # self.left =(left1+left2)/2 * self.drive_constant
         # self.right = (right1+right2)/2 * self.drive_constant
 
-        self.left =left1 * self.drive_constant
-        self.right = right1 * self.drive_constant
+        self.left =left_b * self.drive_constant
+        self.right = right_b * self.drive_constant
     def update(self):
         print("--------------")
         print(self.left,self.right)

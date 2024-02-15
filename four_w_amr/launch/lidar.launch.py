@@ -54,8 +54,6 @@ def generate_launch_description():
             'scan_mode',
             default_value=scan_mode,
             description='Specifying scan mode of lidar'),
-
-
         Node(
             package='rplidar_ros',
             executable='rplidar_node',

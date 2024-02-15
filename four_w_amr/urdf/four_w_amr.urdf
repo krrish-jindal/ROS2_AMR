@@ -347,7 +347,7 @@
     </inertial>
     <visual>
       <origin
-        xyz="0.08 0 -0.1"
+        xyz="0.05 0 -0.1"
         rpy="0 0 3.14" />
       <geometry>
         <mesh
@@ -373,8 +373,8 @@
     name="lidar_joint"
     type="fixed">
     <origin
-      xyz="0.08 0 0.1"
-      rpy="0 0 3.14" />
+      xyz="0.055 0 0.1"
+      rpy="0 0 0" />
     <parent
       link="base_link" />
     <child

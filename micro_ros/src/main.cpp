@@ -90,7 +90,7 @@ float error4 = 0.0;
 
 float kp =0.15;
 float kd =0.12;
-float ki =0.25;
+float ki =0.2;
 
 #define ENCODEROUTPUT 1
 #define GEARRATIO 50
@@ -273,6 +273,7 @@ float pid(int desire, int actual, float min_val_, float max_val_)
     static double error =0;  
 
     static double integral_ = 0; // Make it static to preserve its value between function calls
+    static double prev_derivative_ =0;
     static double prev_error_ = 0; // Make it static to preserve its value between function calls
     double tolerance_1 = 0.1; 
 
@@ -293,17 +294,24 @@ float pid(int desire, int actual, float min_val_, float max_val_)
     else if (fabs(fabs(error) - fabs(prev_error_)) > tolerance_1*fabs(desire)) {
         integral_ =0.0;
     }
-
     double derivative_ = error - prev_error_;
+
+    derivative_ = 0.2 * derivative_ + 0.8 * prev_derivative_;
+
 
     if (desire == 0 && error == 0)
     {
         integral_ = 0;
         derivative_ = 0;
+        prev_derivative_ = 0;
+
+        
     }
 
     double pid = (kp * error) + (ki * integral_) + (kd * derivative_);
     prev_error_ = error;
+    prev_derivative_ = derivative_;
+
     
 
     return constrain(pid, min_val_, max_val_);

@@ -6,7 +6,6 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /RobotModel1/Links1
         - /TF1/Frames1
         - /Path1/Topic1
         - /Path1/Offset1
@@ -133,7 +132,7 @@ Visualization Manager:
         front_right_link:
           Value: false
         lidar_link:
-          Value: false
+          Value: true
         odom:
           Value: true
         realsense_link:
@@ -348,25 +347,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 2.8083975315093994
+      Distance: 4.148743152618408
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.21731939911842346
-        Y: 0.10296379029750824
-        Z: 0.0658927857875824
+        X: 0.3857172131538391
+        Y: 0.26589348912239075
+        Z: -0.3561919927597046
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 1.3397964239120483
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.050420045852661
+      Yaw: 3.1454267501831055
     Saved: ~
 Window Geometry:
   Displays:

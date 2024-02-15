@@ -22,7 +22,7 @@ def generate_launch_description():
     # Declare the transport_type argument
     transport_type = DeclareLaunchArgument('transport_type', default_value='serial', description='Transport type (e.g., udp4, udp6, tcp4, tcp6, canfd, serial, multiserial, pseudoterminal)')
     # Declare the serial device argument
-    serial_dev = DeclareLaunchArgument('serial_dev', default_value='/dev/ttyLidar', description='Serial device')
+    serial_dev = DeclareLaunchArgument('serial_dev', default_value='/dev/ttyesp32', description='Serial device')
     # Declare the baudrate argument
     baudrate = DeclareLaunchArgument('baudrate', default_value='115200', description='Baudrate for serial communication')
 
@@ -55,7 +55,7 @@ def generate_launch_description():
     ld = LaunchDescription()
 
     # Add the launch arguments to the LaunchDescription
-    # ld.add_action(lidar_launch_file)
+    ld.add_action(lidar_launch_file)
 
     ld.add_action(transport_type)
     ld.add_action(serial_dev)

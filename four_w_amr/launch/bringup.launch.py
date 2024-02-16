@@ -49,14 +49,20 @@ def generate_launch_description():
         arguments=[LaunchConfiguration('transport_type'), '--dev', LaunchConfiguration('serial_dev'), '-b', LaunchConfiguration('baudrate')],  # Include the --dev and -b/--baudrate arguments, and -h/--help option
         respawn=True)
     
-    lidar_launch_file = IncludeLaunchDescription(PythonLaunchDescriptionSource([pkg_share, 'rplidar_a1_launch.py.launch.py']),)
+
+    lidar_launch_file_foxy = IncludeLaunchDescription(PythonLaunchDescriptionSource([pkg_share , '/launch/rplidar.launch.py']),)
+    
+    lidar_launch_file_humble = IncludeLaunchDescription(PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/lidar.launch.py']),)
 
     
     # Create LaunchDescription object
     ld = LaunchDescription()
 
-    # Add the launch arguments to the LaunchDescription
-    ld.add_action(lidar_launch_file)
+                # HUMBLE
+    # ld.add_action(lidar_launch_file_humble)
+
+                # FOXY
+    ld.add_action(lidar_launch_file_foxy)
 
     ld.add_action(transport_type)
     ld.add_action(serial_dev)

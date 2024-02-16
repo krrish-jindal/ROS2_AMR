@@ -17,7 +17,8 @@ def generate_launch_description():
 
     # Constants for paths to different files and folders
     package_name = 'four_w_amr'
-    pkg_share = FindPackageShare(package=package_name).find(package_name)
+    lidar_pkg= 'rplidar_ros'
+    pkg_share = FindPackageShare(package=lidar_pkg).find(lidar_pkg)
 
     # Declare the transport_type argument
     transport_type = DeclareLaunchArgument('transport_type', default_value='serial', description='Transport type (e.g., udp4, udp6, tcp4, tcp6, canfd, serial, multiserial, pseudoterminal)')
@@ -48,7 +49,7 @@ def generate_launch_description():
         arguments=[LaunchConfiguration('transport_type'), '--dev', LaunchConfiguration('serial_dev'), '-b', LaunchConfiguration('baudrate')],  # Include the --dev and -b/--baudrate arguments, and -h/--help option
         respawn=True)
     
-    lidar_launch_file = IncludeLaunchDescription(PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/lidar.launch.py']),)
+    lidar_launch_file = IncludeLaunchDescription(PythonLaunchDescriptionSource([pkg_share, 'rplidar_a1_launch.py.launch.py']),)
 
     
     # Create LaunchDescription object

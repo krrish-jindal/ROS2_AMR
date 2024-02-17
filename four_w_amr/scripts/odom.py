@@ -33,14 +33,14 @@ class OdomCalculator(Node):
         self.base_frame_id = 'base_link'
         self.odom_frame_id = 'odom'
 
-        self.odom_publisher = self.create_publisher(Odometry, 'odom', 10)
+        self.odom_publisher = self.create_publisher(Odometry, 'odom', 80)
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         self.encoder_subscription = self.create_subscription(
             Int32MultiArray,
             'encoderdata',
             self.encoder_callback,
-            10)
+            100)
 
         self.timer = self.create_timer(0.1, self.update)
 

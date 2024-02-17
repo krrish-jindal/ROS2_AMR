@@ -49,6 +49,12 @@ def generate_launch_description():
         arguments=[LaunchConfiguration('transport_type'), '--dev', LaunchConfiguration('serial_dev'), '-b', LaunchConfiguration('baudrate')],  # Include the --dev and -b/--baudrate arguments, and -h/--help option
         respawn=True)
     
+    static_transform_publisher_node = Node(
+    package='tf2_ros',
+    executable='static_transform_publisher',
+    name='link1_broadcaster',
+    arguments=['0', '0', '0', '0', '0', '0', '1', 'map', 'odom'],
+    output='screen')
 
     lidar_launch_file_foxy = IncludeLaunchDescription(PythonLaunchDescriptionSource([pkg_share , '/launch/rplidar.launch.py']),)
     
@@ -59,10 +65,10 @@ def generate_launch_description():
     ld = LaunchDescription()
 
                 # HUMBLE
-    # ld.add_action(lidar_launch_file_humble)
+    ld.add_action(lidar_launch_file_humble)
 
                 # FOXY
-    ld.add_action(lidar_launch_file_foxy)
+    # ld.add_action(lidar_launch_file_foxy)
 
     ld.add_action(transport_type)
     ld.add_action(serial_dev)
@@ -72,5 +78,6 @@ def generate_launch_description():
     # Add the nodes to the LaunchDescription
     ld.add_action(start_twist_to_pwm)
     ld.add_action(start_odom_publisher)
+    ld.add_action(static_transform_publisher_node)
 
     return ld

@@ -1,4 +1,4 @@
-//    new correction base
+//   motor control with IMU
 
 #include <Arduino.h>
 #include <Adafruit_MotorShield.h>
@@ -12,7 +12,11 @@
 #include <WiFi.h>
 #include "soc/rtc_io_reg.h"
 #include <std_msgs/msg/string.h>
-
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <sensor_msgs/msg/imu.h>
+#include <rosidl_runtime_c/string_functions.h>
+#include <rosidl_runtime_c/string.h>
 
 
 int16_t received_pwml_data = 0; // Global variable to store received pwml data
@@ -25,10 +29,11 @@ rcl_node_t node;
 rcl_subscription_t pwml_subscription;
 rcl_subscription_t pwmr_subscription;
 rcl_publisher_t encoder_data__publisher;
-std_msgs__msg__Int32MultiArray encoder_msg;
+rcl_publisher_t imu_data__publisher;
 
-rcl_publisher_t motor_data_publisher;
-std_msgs__msg__String motor_data_msg;
+std_msgs__msg__Int32MultiArray encoder_msg;
+sensor_msgs__msg__Imu imu_msg;
+
 
 int32_t encoderdata[5];  
 
@@ -126,6 +131,10 @@ Adafruit_DCMotor *frontLeftMotor = AFMS.getMotor(1);
 Adafruit_DCMotor *backLeftMotor = AFMS.getMotor(2);
 Adafruit_DCMotor *backRightMotor = AFMS.getMotor(3);
 Adafruit_DCMotor *frontRightMotor = AFMS.getMotor(4);
+
+
+Adafruit_MPU6050 mpu;
+
 
 void initMotorController()
 {
@@ -336,6 +345,7 @@ void destroy_entities()
   (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
 
   rcl_publisher_fini(&encoder_data__publisher, &node);
+  rcl_publisher_fini(&imu_data__publisher, &node);
   rclc_executor_fini(&executor);
   rcl_node_fini(&node);
   rclc_support_fini(&support);
@@ -374,10 +384,10 @@ bool create_entities()
       "/encoderdata");
 
   rclc_publisher_init_default(
-      &motor_data_publisher,
+      &imu_data__publisher,
       &node,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
-      "/motor_data");
+      ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+      "/imu_data");
 
 
   rclc_executor_add_subscription(
@@ -437,6 +447,7 @@ void setup()
 
   state = WAITING_AGENT;
 
+  Wire.begin(21, 22);
   Wire.begin(33, 32);
 
   encoderValue1 = 0;
@@ -446,6 +457,22 @@ void setup()
   encoder_msg.data.data = encoderdata;
   encoder_msg.data.size = 5;  
 
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  else{
+  Serial.println("MPU6050 Found!");
+  }
+  mpu.setHighPassFilter(MPU6050_HIGHPASS_0_63_HZ);
+  mpu.setMotionDetectionThreshold(1);
+  mpu.setMotionDetectionDuration(20);
+  mpu.setInterruptPinLatch(true);	// Keep it latched.  Will turn off when reinitialized.
+  mpu.setInterruptPinPolarity(true);
+  mpu.setMotionInterrupt(true);
+  
   initMotorController();
   EncoderInit();
 }
@@ -453,6 +480,22 @@ void setup()
 
 void loop()
 { 
+
+
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
+
+    imu_msg.header.frame_id.data = "imu_link";
+    imu_msg.linear_acceleration.x = a.acceleration.x;
+    imu_msg.linear_acceleration.y = a.acceleration.y;
+    imu_msg.linear_acceleration.z = a.acceleration.z;
+
+    imu_msg.angular_velocity.x = a.gyro.x;
+    imu_msg.angular_velocity.y = a.gyro.y;
+    imu_msg.angular_velocity.z = a.gyro.z;
+    rcl_publish(&imu_data__publisher, &imu_msg, NULL);
+
+
   Serial.println(state);
   unsigned long currentTime = millis();
   unsigned long elapsedTime = currentTime - lastUpdateTime;
@@ -505,15 +548,6 @@ void loop()
     destroy_entities();
     state = WAITING_AGENT;
     
-    // setMotorSpeeds(0, 0, 0, 0);
-    // memset(encoderdata, 0, sizeof(encoderdata));
-    // encoderValue1 = 0;
-    // encoderValue2 = 0;
-    // encoderValue3 = 0;
-    // encoderValue4 = 0;
-    // ESP.restart();
-    // Serial.println("OVER");
-
     break;
   default:
     setMotorSpeeds(0, 0, 0, 0);

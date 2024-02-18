@@ -20,6 +20,10 @@ def generate_launch_description():
     lidar_pkg= 'rplidar_ros'
     pkg_share = FindPackageShare(package=lidar_pkg).find(lidar_pkg)
 
+    pkg_share2 = FindPackageShare(package=package_name).find(package_name)
+
+    ekf_file_path='config/ekf.yaml'
+
     # Declare the transport_type argument
     transport_type = DeclareLaunchArgument('transport_type', default_value='serial', description='Transport type (e.g., udp4, udp6, tcp4, tcp6, canfd, serial, multiserial, pseudoterminal)')
     # Declare the serial device argument
@@ -27,8 +31,17 @@ def generate_launch_description():
     # Declare the baudrate argument
     baudrate = DeclareLaunchArgument('baudrate', default_value='115200', description='Baudrate for serial communication')
 
+    ekf_config_path = os.path.join(pkg_share2, ekf_file_path)
 
 
+    default_odom_topic = DeclareLaunchArgument(
+        name='odom_topic', 
+        default_value='/odom',
+        description='EKF out odometry topic'
+    )
+
+                
+    
     start_twist_to_pwm = Node(
         package='four_w_amr',
         executable='twist_2_pwm.py',
@@ -41,6 +54,20 @@ def generate_launch_description():
         name='odom_pub',
         output='both')
     
+
+
+    start_ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[
+            ekf_config_path
+        ],
+        remappings=[("odometry/filtered", LaunchConfiguration('odom_topic'))]
+    )
+    
+
     micro_ros_agent_node = Node(
         package='micro_ros_agent',
         executable='micro_ros_agent',
@@ -49,12 +76,15 @@ def generate_launch_description():
         arguments=[LaunchConfiguration('transport_type'), '--dev', LaunchConfiguration('serial_dev'), '-b', LaunchConfiguration('baudrate')],  # Include the --dev and -b/--baudrate arguments, and -h/--help option
         respawn=True)
     
-    static_transform_publisher_node = Node(
-    package='tf2_ros',
-    executable='static_transform_publisher',
-    name='link1_broadcaster',
-    arguments=['0', '0', '0', '0', '0', '0', '0', 'map', 'odom'],
-    output='screen')
+
+    
+    static_transform_publisher_cmd = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_transform_publisher',
+        output='screen',
+        arguments=['-0.08', '0', '0.01', '0', '0', '0', 'base_link', 'imu_link'])
+
 
     lidar_launch_file_foxy = IncludeLaunchDescription(PythonLaunchDescriptionSource([pkg_share , '/launch/rplidar.launch.py']),)
     
@@ -68,16 +98,19 @@ def generate_launch_description():
     # ld.add_action(lidar_launch_file_humble)
 
                 # FOXY
-    ld.add_action(lidar_launch_file_foxy)
+    # ld.add_action(lidar_launch_file_foxy)
 
     ld.add_action(transport_type)
     ld.add_action(serial_dev)
     ld.add_action(baudrate)
     ld.add_action(micro_ros_agent_node)
+    ld.add_action(default_odom_topic)
 
     # Add the nodes to the LaunchDescription
     ld.add_action(start_twist_to_pwm)
     ld.add_action(start_odom_publisher)
-    # ld.add_action(static_transform_publisher_node)
+    ld.add_action(start_ekf_node)
+
+    ld.add_action(static_transform_publisher_cmd)
 
     return ld

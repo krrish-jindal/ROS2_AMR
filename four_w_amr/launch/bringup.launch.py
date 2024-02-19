@@ -64,7 +64,7 @@ def generate_launch_description():
         parameters=[
             ekf_config_path
         ],
-        remappings=[("odometry/filtered", LaunchConfiguration('odom_topic'))]
+        # remappings=[("odometry/filtered", LaunchConfiguration('odom_topic'))]
     )
     
 
@@ -98,7 +98,7 @@ def generate_launch_description():
     # ld.add_action(lidar_launch_file_humble)
 
                 # FOXY
-    # ld.add_action(lidar_launch_file_foxy)
+    ld.add_action(lidar_launch_file_foxy)
 
     ld.add_action(transport_type)
     ld.add_action(serial_dev)
@@ -109,7 +109,7 @@ def generate_launch_description():
     # Add the nodes to the LaunchDescription
     ld.add_action(start_twist_to_pwm)
     ld.add_action(start_odom_publisher)
-    ld.add_action(start_ekf_node)
+    # ld.add_action(start_ekf_node)
 
     ld.add_action(static_transform_publisher_cmd)
 

@@ -74,6 +74,14 @@ def generate_launch_description():
         name='rviz2',
         output='screen',
         arguments=['-d', LaunchConfiguration('rviz_config_file')])
+    
+    static_transform_publisher_cmd = Node(
+    package='tf2_ros',
+    executable='static_transform_publisher',
+    name='static_transform_publisher',
+    output='screen',
+    arguments=['0.0', '0', '0.0', '0', '0', '0', 'map', 'odom'])
+
 
     # Create the launch description and populate
     ld = LaunchDescription()
@@ -92,5 +100,6 @@ def generate_launch_description():
 
     # Launch RViz
     ld.add_action(start_rviz_cmd)
+    ld.add_action(static_transform_publisher_cmd)
 
     return ld

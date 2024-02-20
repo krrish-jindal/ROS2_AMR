@@ -100,6 +100,6 @@ def generate_launch_description():
 
     # Launch RViz
     ld.add_action(start_rviz_cmd)
-    ld.add_action(static_transform_publisher_cmd)
+    # ld.add_action(static_transform_publisher_cmd)
 
     return ld

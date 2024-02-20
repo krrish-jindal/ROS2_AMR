@@ -40,7 +40,7 @@ amcl:
     z_max: 0.05
     z_rand: 0.5
     z_short: 0.05
-    scan_topic: scan
+    scan_topic: /scan
 
 amcl_map_client:
   ros__parameters:
@@ -55,7 +55,7 @@ bt_navigator:
     use_sim_time: False
     global_frame: map
     robot_base_frame: base_link
-    odom_topic: odom
+    odom_topic: /odom
     enable_groot_monitoring: True
     groot_zmq_publisher_port: 1666
     groot_zmq_server_port: 1667
@@ -220,12 +220,6 @@ global_costmap:
         observation_sources: scan base_scan
         scan:
           topic: /scan
-          max_obstacle_height: 2.0
-          clearing: True
-          marking: True
-          data_type: "LaserScan"
-        base_scan:
-          topic: /base/scan
           max_obstacle_height: 2.0
           clearing: True
           marking: True

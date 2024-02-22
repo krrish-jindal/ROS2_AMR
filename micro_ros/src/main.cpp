@@ -387,7 +387,7 @@ bool create_entities()
       &imu_data__publisher,
       &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-      "/imu_data");
+      "imu/data_raw");
 
 
   rclc_executor_add_subscription(

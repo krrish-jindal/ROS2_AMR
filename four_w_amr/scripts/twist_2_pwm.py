@@ -12,7 +12,7 @@ class DifferentialDriver:
         self.motor_rpm = 200
         self.max_pwm_val = 170
         self.min_pwm_val = -170
-        self.wheel_separation = 0.24
+        self.wheel_separation = 0.30
         self.ka= 5.0
         self.kl= 1.2
 
@@ -86,8 +86,8 @@ class DifferentialDriver:
         # print(" Left Velocity = {} m/s | Left RPM = {} RPM".format(left_vel, left_rpm))
         # print(" Right Velocity = {} m/s | Right RPM = {} RPM".format(right_vel, right_rpm))
         
-        self.left_pwm.data = int(left_pwm_data)
-        self.right_pwm.data = int(right_pwm_data)
+        self.left_pwm.data = int(left_pwm_data)+abs(97)
+        self.right_pwm.data = int(right_pwm_data)+abs(97)
 
         self.left_pwm_pub.publish(self.left_pwm)
         self.right_pwm_pub.publish(self.right_pwm)

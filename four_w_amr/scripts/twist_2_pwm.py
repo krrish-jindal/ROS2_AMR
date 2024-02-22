@@ -27,6 +27,8 @@ class DifferentialDriver:
             10
         )
 
+        self.timer = self.node.create_timer(0.01, self.publish_callback)
+
         self.left_pwm_pub = self.node.create_publisher(Int16, 'pwml', 10)
         self.right_pwm_pub = self.node.create_publisher(Int16, 'pwmr', 10)
 
@@ -39,6 +41,7 @@ class DifferentialDriver:
         self.right_vel_actual = 0
         self.left_vel_actual = 0
         self.kp = 0.5
+
 
     def get_pwm(self, left_speed, right_speed):
 
@@ -86,11 +89,15 @@ class DifferentialDriver:
         # print(" Left Velocity = {} m/s | Left RPM = {} RPM".format(left_vel, left_rpm))
         # print(" Right Velocity = {} m/s | Right RPM = {} RPM".format(right_vel, right_rpm))
         
-        self.left_pwm.data = int(left_pwm_data)+abs(97)
-        self.right_pwm.data = int(right_pwm_data)+abs(97)
+        self.left_pwm.data = int(left_pwm_data)
+        self.right_pwm.data = int(right_pwm_data)
+
+
+    def publish_callback(self):
 
         self.left_pwm_pub.publish(self.left_pwm)
         self.right_pwm_pub.publish(self.right_pwm)
+
 
 if __name__ == '__main__':
     dd = DifferentialDriver()

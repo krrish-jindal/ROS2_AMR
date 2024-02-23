@@ -1,4 +1,4 @@
-//   motor control with IMU
+//   WORKING motor control with IMU MPU6050
 
 #include <Arduino.h>
 #include <Adafruit_MotorShield.h>
@@ -112,6 +112,16 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x40);
 #define BACKRIGHT 2
 #define BACKLEFT 3
 
+#define SDA_1 21
+#define SCL_1 22
+
+#define SDA_2 33
+#define SCL_2 32
+
+TwoWire I2C_1 =TwoWire(0);
+TwoWire I2C_2 =TwoWire(1);
+
+
 #define EXECUTE_EVERY_N_MS(MS, X)      \
   do                                   \
   {                                    \
@@ -144,7 +154,10 @@ void initMotorController()
     // ...
   }
 
-  AFMS.begin(); // create with the default frequency 1.6KHz
+  AFMS.begin(0x1E,&I2C_2); // create with the default frequency 1.6KHz
+  AFMS.begin(0x40,&I2C_2); // create with the default frequency 1.6KHz
+  AFMS.begin(0x70,&I2C_2); // create with the default frequency 1.6KHz
+  AFMS.begin(0x7e,&I2C_2); // create with the default frequency 1.6KHz
 
   pinMode(HALLSEN_A, INPUT);
   pinMode(HALLSEN_B, INPUT);
@@ -387,7 +400,7 @@ bool create_entities()
       &imu_data__publisher,
       &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-      "imu/data_raw");
+      "/imu_data");
 
 
   rclc_executor_add_subscription(
@@ -424,6 +437,7 @@ void setup()
   
 
   Serial.begin(115200);
+  pinMode(2, OUTPUT);
 
 
   //         TO ENABLE SERIAL
@@ -447,8 +461,8 @@ void setup()
 
   state = WAITING_AGENT;
 
-  Wire.begin(21, 22);
-  Wire.begin(33, 32);
+  I2C_1.begin(SDA_1,SCL_1);
+  I2C_2.begin(SDA_2,SCL_2);
 
   encoderValue1 = 0;
   encoderValue2 = 0;
@@ -457,7 +471,7 @@ void setup()
   encoder_msg.data.data = encoderdata;
   encoder_msg.data.size = 5;  
 
-  if (!mpu.begin()) {
+  if (!mpu.begin(0x68,&I2C_1)) {
     Serial.println("Failed to find MPU6050 chip");
     while (1) {
       delay(10);
@@ -466,22 +480,27 @@ void setup()
   else{
   Serial.println("MPU6050 Found!");
   }
-  mpu.setHighPassFilter(MPU6050_HIGHPASS_0_63_HZ);
+  mpu.setHighPassFilter(MPU6050_HIGHPASS_1_25_HZ);
   mpu.setMotionDetectionThreshold(1);
   mpu.setMotionDetectionDuration(20);
+  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
+  mpu.setGyroRange(MPU6050_RANGE_2000_DEG);
+
   mpu.setInterruptPinLatch(true);	// Keep it latched.  Will turn off when reinitialized.
   mpu.setInterruptPinPolarity(true);
   mpu.setMotionInterrupt(true);
   
   initMotorController();
   EncoderInit();
+  Serial.println("SETUP");
+
 }
 
 
 void loop()
 { 
 
-
+  Serial.println("LOOP");
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
 
@@ -496,9 +515,10 @@ void loop()
     rcl_publish(&imu_data__publisher, &imu_msg, NULL);
 
 
-  Serial.println(state);
   unsigned long currentTime = millis();
   unsigned long elapsedTime = currentTime - lastUpdateTime;
+
+
 
   if (elapsedTime >= UPDATE_INTERVAL)
   {
@@ -518,6 +538,17 @@ void loop()
 
     lastUpdateTime = currentTime;
   }
+  encoderdata[0]=encoderValue1;
+  encoderdata[1]=encoderValue2;
+  encoderdata[2]=encoderValue3;
+  encoderdata[3]=encoderValue4;
+
+  encoder_msg.data.data = encoderdata;
+  rcl_ret_t publish_status = rcl_publish(&encoder_data__publisher, &encoder_msg, NULL);
+  if (publish_status != RCL_RET_OK)
+  {
+
+  }
 
 
 
@@ -531,7 +562,6 @@ void loop()
     state = (true == create_entities()) ? AGENT_CONNECTED : WAITING_AGENT;
     if (state == WAITING_AGENT)
     {
-
       destroy_entities();
     };
     break;
@@ -543,17 +573,11 @@ void loop()
     }
     break;
 
-  case AGENT_DISCONNECTED:
-
-    destroy_entities();
-    state = WAITING_AGENT;
-    
+  case AGENT_DISCONNECTED:  
     break;
+
   default:
     setMotorSpeeds(0, 0, 0, 0);
-
-    // ESP.restart();
-
     break;
   }
 
@@ -562,13 +586,6 @@ void loop()
 
   int desiredRPM_L = pwmToRPM(received_pwml_data, PWM_MIN, PWM_MAX, RPM_MIN, RPM_MAX);
   int desiredRPM_R = pwmToRPM(received_pwmr_data, PWM_MIN, PWM_MAX, RPM_MIN, RPM_MAX);
-
-
-  encoderdata[0]=encoderValue1;
-  encoderdata[1]=encoderValue2;
-  encoderdata[2]=encoderValue3;
-  encoderdata[3]=encoderValue4;
-
 
   // ----------PID-Controller------------//
 
@@ -582,31 +599,40 @@ void loop()
 
   // -------------------------//
 
-  encoder_msg.data.data = encoderdata;
-  rcl_ret_t publish_status = rcl_publish(&encoder_data__publisher, &encoder_msg, NULL);
-  if (publish_status != RCL_RET_OK)
+
+    if (state == WAITING_AGENT)
   {
-    Serial.print("Failed to publish motor speeds message. Error code: ");
-    Serial.println(publish_status);
+    digitalWrite(2, HIGH);
+    delay(5000);
+    digitalWrite(2, LOW);
+
   }
-  
 
   if (state == AGENT_CONNECTED)
   {
+    digitalWrite(2, LOW);
+    
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
 
     setMotorSpeeds(received_pwmr_data+error1, received_pwml_data+error2, received_pwmr_data+error3, received_pwml_data+error4);
 
   }
-  else if(state == AGENT_DISCONNECTED){
+
+
+  if(state == AGENT_DISCONNECTED){
+    digitalWrite(2, HIGH);   
+
     setMotorSpeeds(0, 0, 0, 0);
     memset(encoderdata, 0, sizeof(encoderdata));
     encoderValue1 = 0;
     encoderValue2 = 0;
     encoderValue3 = 0;
-    encoderValue4 = 0;    
+    encoderValue4 = 0; 
+
+    delay(200);   
     destroy_entities();
     ESP.restart();
+    
   }
   else
   {

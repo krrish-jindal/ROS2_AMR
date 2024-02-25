@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /TF1
         - /TF1/Frames1
         - /Map1
         - /Path1/Topic1
@@ -29,7 +30,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan
+    SyncSource: ""
 Visualization Manager:
   Class: ""
   Displays:
@@ -134,10 +135,12 @@ Visualization Manager:
           Value: false
         imu_link:
           Value: true
+        imu_link_1:
+          Value: true
         lidar_link:
-          Value: true
+          Value: false
         map:
-          Value: true
+          Value: false
         odom:
           Value: true
         realsense_link:
@@ -151,25 +154,25 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          {}
-        odom:
-          base_link:
-            back_left_link:
-              {}
-            back_right_link:
-              {}
-            front_left_link:
-              {}
-            front_right_link:
-              {}
-            imu_link:
-              {}
-            lidar_link:
-              {}
-            realsense_link:
-              {}
-            top_plate_link:
-              {}
+          odom:
+            base_link:
+              back_left_link:
+                {}
+              back_right_link:
+                {}
+              front_left_link:
+                {}
+              front_right_link:
+                {}
+              lidar_link:
+                {}
+              realsense_link:
+                {}
+              top_plate_link:
+                {}
+            imu_link_1:
+              imu_link:
+                {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -313,7 +316,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: map
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -356,25 +359,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 10.962103843688965
+      Distance: 2.889073371887207
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.14075374603271484
-        Y: -0.47337788343429565
-        Z: -0.4361770749092102
+        X: -0.2601677179336548
+        Y: 0.032307397574186325
+        Z: -0.2073657214641571
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.424796462059021
+      Pitch: 1.184796929359436
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.1654319763183594
+      Yaw: 0.21044006943702698
     Saved: ~
 Window Geometry:
   Displays:

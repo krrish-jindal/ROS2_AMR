@@ -18,9 +18,13 @@ def generate_launch_description():
     # Constants for paths to different files and folders
     package_name = 'four_w_amr'
     lidar_pkg= 'rplidar_ros'
+    imu_pkg= 'imu_filter_madgwick'
+
     pkg_share = FindPackageShare(package=lidar_pkg).find(lidar_pkg)
 
     pkg_share2 = FindPackageShare(package=package_name).find(package_name)
+
+    pkg_share3 = FindPackageShare(package=imu_pkg).find(imu_pkg)
 
     ekf_file_path='config/ekf.yaml'
 
@@ -64,7 +68,7 @@ def generate_launch_description():
         parameters=[
             ekf_config_path
         ],
-        # remappings=[("odometry/filtered", LaunchConfiguration('odom_topic'))]
+        remappings=[("odometry/filtered", LaunchConfiguration('odom_topic'))]
     )
     
 
@@ -74,22 +78,23 @@ def generate_launch_description():
         name='micro_ros_agent_node',
         output='screen',
         arguments=[LaunchConfiguration('transport_type'), '--dev', LaunchConfiguration('serial_dev'), '-b', LaunchConfiguration('baudrate')],  # Include the --dev and -b/--baudrate arguments, and -h/--help option
-        respawn=True)
+        respawn=False)
     
 
     
-    static_transform_publisher_cmd = Node(
+    static_transform_publisher_cmd_1 = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         name='static_transform_publisher',
         output='screen',
-        arguments=['-0.08', '0', '0.01', '0', '0', '0', 'base_link', 'imu_link'])
+        arguments=['0.0', '0', '0.01', '0', '0', '3.14', 'base_link', 'imu_link'])
 
 
     lidar_launch_file_foxy = IncludeLaunchDescription(PythonLaunchDescriptionSource([pkg_share , '/launch/rplidar.launch.py']),)
     
-    lidar_launch_file_humble = IncludeLaunchDescription(PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/lidar.launch.py']),)
+    lidar_launch_file_humble = IncludeLaunchDescription(PythonLaunchDescriptionSource([pkg_share2, '/launch/lidar.launch.py']),)
 
+    imu_tool = IncludeLaunchDescription(PythonLaunchDescriptionSource([pkg_share3, '/launch/imu_filter.launch.py']),)
     
     # Create LaunchDescription object
     ld = LaunchDescription()
@@ -109,8 +114,10 @@ def generate_launch_description():
     # Add the nodes to the LaunchDescription
     ld.add_action(start_twist_to_pwm)
     ld.add_action(start_odom_publisher)
+    ld.add_action(imu_tool)
+
     # ld.add_action(start_ekf_node)
 
-    ld.add_action(static_transform_publisher_cmd)
+    # ld.add_action(static_transform_pu2blisher_cmd)
 
     return ld

@@ -17,6 +17,7 @@
 #include <sensor_msgs/msg/imu.h>
 #include <rosidl_runtime_c/string_functions.h>
 #include <rosidl_runtime_c/string.h>
+#include <rclc/timer.h>
 
 
 int16_t received_pwml_data = 0; // Global variable to store received pwml data
@@ -321,7 +322,7 @@ float pid(int desire, int actual, float min_val_, float max_val_)
     derivative_ = 0.2 * derivative_ + 0.8 * prev_derivative_;
 
 
-    if (desire == 0 && error == 0)
+    if (desire == 0 )
     {
         integral_ = 0;
         derivative_ = 0;
@@ -400,7 +401,7 @@ bool create_entities()
       &imu_data__publisher,
       &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-      "/imu_data");
+      "/imu/data_raw");
 
 
   rclc_executor_add_subscription(
@@ -468,8 +469,9 @@ void setup()
   encoderValue2 = 0;
   encoderValue3 = 0;
   encoderValue4 = 0;
+
   encoder_msg.data.data = encoderdata;
-  encoder_msg.data.size = 5;  
+  encoder_msg.data.size = 4;  
 
   if (!mpu.begin(0x68,&I2C_1)) {
     Serial.println("Failed to find MPU6050 chip");
@@ -481,10 +483,10 @@ void setup()
   Serial.println("MPU6050 Found!");
   }
   mpu.setHighPassFilter(MPU6050_HIGHPASS_1_25_HZ);
-  mpu.setMotionDetectionThreshold(1);
+  mpu.setMotionDetectionThreshold(10);
   mpu.setMotionDetectionDuration(20);
-  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
-  mpu.setGyroRange(MPU6050_RANGE_2000_DEG);
+  // mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+  // mpu.setGyroRange(MPU6050_RANGE_250_DEG);
 
   mpu.setInterruptPinLatch(true);	// Keep it latched.  Will turn off when reinitialized.
   mpu.setInterruptPinPolarity(true);
@@ -492,31 +494,36 @@ void setup()
   
   initMotorController();
   EncoderInit();
-  Serial.println("SETUP");
 
 }
 
 
 void loop()
 { 
+    unsigned long currentTime = millis();
+  unsigned long elapsedTime = currentTime - lastUpdateTime;
 
-  Serial.println("LOOP");
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
+    uint32_t sec = currentTime / 1000;
+    uint32_t nsec = (currentTime % 1000) * 1000000;
 
+    imu_msg.header.stamp.sec = sec;
+    imu_msg.header.stamp.nanosec = nsec;
     imu_msg.header.frame_id.data = "imu_link";
-    imu_msg.linear_acceleration.x = a.acceleration.x;
-    imu_msg.linear_acceleration.y = a.acceleration.y;
-    imu_msg.linear_acceleration.z = a.acceleration.z;
 
-    imu_msg.angular_velocity.x = a.gyro.x;
-    imu_msg.angular_velocity.y = a.gyro.y;
-    imu_msg.angular_velocity.z = a.gyro.z;
+    imu_msg.linear_acceleration.x = map(a.acceleration.x,-11.7,11.7,-10.0,10.0);
+    imu_msg.linear_acceleration.y =0.0;
+    imu_msg.linear_acceleration.z = map(a.acceleration.z,-11.7,11.7,-10.0,10.0);
+    // imu_msg.linear_acceleration.z = a.acceleration.z;
+
+    imu_msg.angular_velocity.x = 0.0;
+    imu_msg.angular_velocity.y = 0.0;
+    imu_msg.angular_velocity.z = (g.gyro.z);
     rcl_publish(&imu_data__publisher, &imu_msg, NULL);
 
 
-  unsigned long currentTime = millis();
-  unsigned long elapsedTime = currentTime - lastUpdateTime;
+
 
 
 
@@ -566,7 +573,7 @@ void loop()
     };
     break;
   case AGENT_CONNECTED:
-    EXECUTE_EVERY_N_MS(500, state = (RMW_RET_OK == rmw_uros_ping_agent(100, 1)) ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
+    EXECUTE_EVERY_N_MS(1000, state = (RMW_RET_OK == rmw_uros_ping_agent(500, 2)) ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
     if (state == AGENT_CONNECTED)
     {
       Serial.println("CONNECTION ESTABLISHED");
@@ -603,7 +610,7 @@ void loop()
     if (state == WAITING_AGENT)
   {
     digitalWrite(2, HIGH);
-    delay(5000);
+    delay(10);
     digitalWrite(2, LOW);
 
   }
@@ -615,7 +622,9 @@ void loop()
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
 
     setMotorSpeeds(received_pwmr_data+error1, received_pwml_data+error2, received_pwmr_data+error3, received_pwml_data+error4);
+    if (state = (RMW_RET_OK == rmw_uros_ping_agent(500, 2)) ? AGENT_CONNECTED : AGENT_DISCONNECTED);{
 
+    }
   }
 
 
@@ -627,10 +636,16 @@ void loop()
     encoderValue1 = 0;
     encoderValue2 = 0;
     encoderValue3 = 0;
-    encoderValue4 = 0; 
+    encoderValue4 = 0;
+    a.acceleration.x= 0.0;
+    a.acceleration.y= 0.0;
+    a.acceleration.z= 0.0;
+
+    g.gyro.x= 0.0;
+    g.gyro.y= 0.0;
+    g.gyro.z= 0.0;
 
     delay(200);   
-    destroy_entities();
     ESP.restart();
     
   }

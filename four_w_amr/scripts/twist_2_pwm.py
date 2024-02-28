@@ -13,7 +13,7 @@ class DifferentialDriver:
         self.max_pwm_val = 170
         self.min_pwm_val = -170
         self.wheel_separation = 0.30
-        self.ka= 5.0
+        self.ka= 10.0
         self.kl= 1.2
 
         rclpy.init()

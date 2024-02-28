@@ -94,9 +94,9 @@ float error2 = 0.0;
 float error3 = 0.0;
 float error4 = 0.0;
 
-float kp =0.15;
+float kp =0.14;
 float kd =0.12;
-float ki =0.2;
+float ki =0.18;
 
 #define ENCODEROUTPUT 1
 #define GEARRATIO 50
@@ -158,7 +158,10 @@ void initMotorController()
   AFMS.begin(0x1E,&I2C_2); // create with the default frequency 1.6KHz
   AFMS.begin(0x40,&I2C_2); // create with the default frequency 1.6KHz
   AFMS.begin(0x70,&I2C_2); // create with the default frequency 1.6KHz
-  AFMS.begin(0x7e,&I2C_2); // create with the default frequency 1.6KHz
+  AFMS.begin(0x7E,&I2C_2); // create with the default frequency 1.6KHz
+  AFMS.begin(0x6A,&I2C_2); // create with the default frequency 1.6KHz
+  
+
 
   pinMode(HALLSEN_A, INPUT);
   pinMode(HALLSEN_B, INPUT);
@@ -298,25 +301,36 @@ float pid(int desire, int actual, float min_val_, float max_val_)
     static double integral_ = 0; // Make it static to preserve its value between function calls
     static double prev_derivative_ =0;
     static double prev_error_ = 0; // Make it static to preserve its value between function calls
-    double tolerance_1 = 0.1; 
+    double tolerance_1 = 0.5; 
 
 
     error = desire - actual;
-    if (fabs(fabs(error) - fabs(prev_error_)) <= tolerance_1*fabs(desire) && error !=0.0 ) {
 
+
+//    TO IMPLEMENT iNTIGRAL AT STOP ONLY
+
+      // if (fabs(fabs(error) - fabs(prev_error_)) <= tolerance_1*fabs(desire) && error !=0.0 ) {
+
+
+      //     integral_ += error;
+      //     if (integral_ > max_val_)
+      //         integral_ = max_val_;
+      //     else if (integral_ < min_val_)
+      //         integral_ = min_val_;
+        
+
+      // }
+
+      // else if (fabs(fabs(error) - fabs(prev_error_)) > tolerance_1*fabs(desire)) {
+      //     integral_ =0.0;
+      // }
 
         integral_ += error;
-        if (integral_ > max_val_)
-            integral_ = max_val_;
-        else if (integral_ < min_val_)
-            integral_ = min_val_;
-      
+    if (integral_ > max_val_)
+        integral_ = max_val_;
+    else if (integral_ < min_val_)
+        integral_ = min_val_;
 
-    }
-
-    else if (fabs(fabs(error) - fabs(prev_error_)) > tolerance_1*fabs(desire)) {
-        integral_ =0.0;
-    }
     double derivative_ = error - prev_error_;
 
     derivative_ = 0.2 * derivative_ + 0.8 * prev_derivative_;
@@ -513,13 +527,14 @@ void loop()
     imu_msg.header.frame_id.data = "imu_link";
 
     imu_msg.linear_acceleration.x = map(a.acceleration.x,-11.7,11.7,-10.0,10.0);
-    imu_msg.linear_acceleration.y =0.0;
-    imu_msg.linear_acceleration.z = map(a.acceleration.z,-11.7,11.7,-10.0,10.0);
+    imu_msg.linear_acceleration.y =map(a.acceleration.y,-11.7,11.7,-10.0,10.0);
+    imu_msg.linear_acceleration.z = 9.8;
     // imu_msg.linear_acceleration.z = a.acceleration.z;
 
-    imu_msg.angular_velocity.x = 0.0;
-    imu_msg.angular_velocity.y = 0.0;
-    imu_msg.angular_velocity.z = (g.gyro.z);
+  imu_msg.angular_velocity.x = round(g.gyro.x * 10) / 10.0;
+  imu_msg.angular_velocity.y = round(g.gyro.y * 10) / 10.0;
+  imu_msg.angular_velocity.z = round(g.gyro.z * 10) / 10.0;
+
     rcl_publish(&imu_data__publisher, &imu_msg, NULL);
 
 
@@ -596,13 +611,10 @@ void loop()
 
   // ----------PID-Controller------------//
 
-  error1=pid((desiredRPM_L),(rpm1),-160.0,160.0);
-
-  error2=pid((desiredRPM_R),(rpm3),-160.0,160.0);
-
-  error3=pid((desiredRPM_L),(rpm4),-160.0,160.0);
-
-  error4=pid((desiredRPM_R),(rpm2),-160.0,160.0);
+  error1=pid((desiredRPM_L),(rpm1),-190.0,190.0);
+  error2=pid((desiredRPM_R),(rpm3),-190.0,190.0);
+  error3=pid((desiredRPM_L),(rpm4),-190.0,190.0);
+  error4=pid((desiredRPM_R),(rpm2),-190.0,190.0);
 
   // -------------------------//
 

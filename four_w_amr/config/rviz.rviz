@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /Global Options1
         - /Status1
         - /TF1/Frames1
         - /Path1/Topic1
@@ -130,8 +131,6 @@ Visualization Manager:
           Value: false
         front_right_link:
           Value: false
-        imu_link:
-          Value: true
         lidar_link:
           Value: false
         map:
@@ -151,14 +150,6 @@ Visualization Manager:
         map:
           odom:
             base_link:
-              back_left_link:
-                {}
-              back_right_link:
-                {}
-              front_left_link:
-                {}
-              front_right_link:
-                {}
               lidar_link:
                 {}
               realsense_link:
@@ -386,7 +377,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 8.791738510131836
+      Distance: 6.45427131652832
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

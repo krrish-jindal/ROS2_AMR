@@ -100,7 +100,7 @@ def generate_launch_description():
     ld = LaunchDescription()
 
                 # HUMBLE
-    ld.add_action(lidar_launch_file_humble)
+    # ld.add_action(lidar_launch_file_humble)
 
                 # FOXY
     # ld.add_action(lidar_launch_file_foxy)

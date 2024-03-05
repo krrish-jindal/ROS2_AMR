@@ -17,7 +17,7 @@ def generate_launch_description():
     frame_id = LaunchConfiguration('frame_id', default='lidar_link')
     inverted = LaunchConfiguration('inverted', default='false')
     angle_compensate = LaunchConfiguration('angle_compensate', default='true')
-    scan_mode = LaunchConfiguration('scan_mode', default='Sensitivity')
+    scan_mode = LaunchConfiguration('scan_mode', default='Standard')
     
     return LaunchDescription([
 
@@ -56,15 +56,16 @@ def generate_launch_description():
             description='Specifying scan mode of lidar'),
         Node(
             package='rplidar_ros',
-            executable='rplidar_node',
-            name='rplidar_node',
+            executable='rplidar_composition',
+            name='rplidar_composition',
             
             parameters=[{'channel_type':channel_type,
                          'serial_port': serial_port,
                          'serial_baudrate': serial_baudrate,
                          'frame_id': frame_id,
                          'inverted': inverted,
-                         'angle_compensate': angle_compensate}],
+                         'angle_compensate': angle_compensate,
+                         'scan_mode': scan_mode,}],
             output='screen'),
 
             

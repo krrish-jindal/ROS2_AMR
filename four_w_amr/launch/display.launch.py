@@ -95,6 +95,13 @@ def generate_launch_description():
     executable='static_transform_publisher',
     name='static_transform_publisher',
     output='screen',
+    arguments=['0.0', '0', '0.0', '0', '0', '0', 'map', 'odom'])
+
+    static_transform_publisher_cmd_2 = Node(
+    package='tf2_ros',
+    executable='static_transform_publisher',
+    name='static_transform_publisher',
+    output='screen',
     arguments=['-0.09', '0', '0.15', '0', '0', '0', 'top_plate_link', 'camera_link'])
 
     included_launch = IncludeLaunchDescription(
@@ -117,9 +124,10 @@ def generate_launch_description():
 
     # Launch RViz
     ld.add_action(start_rviz_cmd)
+    ld.add_action(static_transform_publisher_cmd_1)
     ld.add_action(static_transform_publisher_cmd)
+    ld.add_action(static_transform_publisher_cmd_2)
     ld.add_action(included_launch)
 
-    ld.add_action(static_transform_publisher_cmd_1)
 
     return ld

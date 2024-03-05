@@ -30,7 +30,7 @@
    - Install the ROS Navigation stack package along with other dependencies using the following command:
 
       ```bash
-      sudo apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-xacro  ros-humble-rviz2 ros-humble-tf-transformations
+      sudo apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-xacro  ros-humble-rviz2 ros-humble-tf-transformations ros-humble-joint-state-publisher ros-humble-robot-state-publisher
       ```
 
 ## Micro_ROS Setup
@@ -65,16 +65,27 @@ Install Platforio on vscode and Upload micro_ros firmware in esp32 (**in micro_r
 
 ## Launch Files
 
-To run without realsense
+### To run without realsense
+
+**On Remote machine using ssh**
+```bash
+ros2 launch four_w_amr bringup.launch.py
+```
+**On Host machine**
 ```bash
 ros2 launch four_w_amr display.launch.py
-ros2 launch four_w_amr bringup.launch.py
 ros2 launch four_w_amr_nav2 navigation_launch.py
 ```
-To run with realsense
 
+### To run with realsense
+
+**On Remote machine using ssh**
+```bash
+ros2 launch four_w_amr realsense.launch.py
+```
+
+**On Host machine**
 ```bash
 ros2 launch four_w_amr display.launch.py
-ros2 launch four_w_amr realsense.launch.py
 ros2 launch four_w_amr_nav2 navigation_launch.py
 ```

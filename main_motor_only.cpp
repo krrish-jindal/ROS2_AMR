@@ -93,9 +93,9 @@ float error2 = 0.0;
 float error3 = 0.0;
 float error4 = 0.0;
 
-float kp =0.15;
+float kp =0.14;
 float kd =0.12;
-float ki =0.25;
+float ki =0.18;
 
 #define ENCODEROUTPUT 1
 #define GEARRATIO 50
@@ -280,31 +280,44 @@ float pid(int desire, int actual, float min_val_, float max_val_)
     static double integral_ = 0; // Make it static to preserve its value between function calls
     static double prev_error_ = 0; // Make it static to preserve its value between function calls
     double tolerance_1 = 0.1; 
+    static double prev_derivative_ =0;
+
 
 
     error = desire - actual;
-    if (fabs(fabs(error) - fabs(prev_error_)) <= tolerance_1*fabs(desire) && error !=0.0 ) {
+//    TO IMPLEMENT iNTIGRAL AT STOP ONLY
 
+      // if (fabs(fabs(error) - fabs(prev_error_)) <= tolerance_1*fabs(desire) && error !=0.0 ) {
+
+
+      //     integral_ += error;
+      //     if (integral_ > max_val_)
+      //         integral_ = max_val_;
+      //     else if (integral_ < min_val_)
+      //         integral_ = min_val_;
+        
+
+      // }
+
+      // else if (fabs(fabs(error) - fabs(prev_error_)) > tolerance_1*fabs(desire)) {
+      //     integral_ =0.0;
+      // }
 
         integral_ += error;
-        if (integral_ > max_val_)
-            integral_ = max_val_;
-        else if (integral_ < min_val_)
-            integral_ = min_val_;
-      
-
-    }
-
-    else if (fabs(fabs(error) - fabs(prev_error_)) > tolerance_1*fabs(desire)) {
-        integral_ =0.0;
-    }
+    if (integral_ > max_val_)
+        integral_ = max_val_;
+    else if (integral_ < min_val_)
+        integral_ = min_val_;
 
     double derivative_ = error - prev_error_;
+    derivative_ = 0.2 * derivative_ + 0.8 * prev_derivative_;
 
     if (desire == 0 && error == 0)
     {
         integral_ = 0;
         derivative_ = 0;
+        prev_derivative_ = 0;
+
     }
 
     double pid = (kp * error) + (ki * integral_) + (kd * derivative_);
@@ -370,13 +383,6 @@ bool create_entities()
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32MultiArray),
       "/encoderdata");
 
-  rclc_publisher_init_default(
-      &motor_data_publisher,
-      &node,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
-      "/motor_data");
-
-
   rclc_executor_add_subscription(
       &executor,
       &pwml_subscription,
@@ -390,12 +396,6 @@ bool create_entities()
       &received_pwmr_data,
       &pwmr_callback,
       ON_NEW_DATA);
-  (rclc_publisher_init_default(
-    &publisher_log,
-    &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, Log),
-    "rosout"));
-  
 
   return true;
 }
@@ -535,13 +535,10 @@ void loop()
 
   // ----------PID-Controller------------//
 
-  error1=pid((desiredRPM_L),(rpm1),-160.0,160.0);
-
-  error2=pid((desiredRPM_R),(rpm3),-160.0,160.0);
-
-  error3=pid((desiredRPM_L),(rpm4),-160.0,160.0);
-
-  error4=pid((desiredRPM_R),(rpm2),-160.0,160.0);
+  error1=pid((desiredRPM_L),(rpm1),-190.0,190.0);
+  error2=pid((desiredRPM_R),(rpm3),-190.0,190.0);
+  error3=pid((desiredRPM_L),(rpm4),-190.0,190.0);
+  error4=pid((desiredRPM_R),(rpm2),-190.0,190.0);
 
   // -------------------------//
 
@@ -568,9 +565,10 @@ void loop()
     encoderValue2 = 0;
     encoderValue3 = 0;
     encoderValue4 = 0;    
-    destroy_entities();
-    state = WAITING_AGENT;
+
+    delay(200);   
     ESP.restart();
+    
   }
 
   else

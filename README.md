@@ -1,5 +1,7 @@
 # Setting up Ubuntu and ROS
 
+**_NOTE:_** All things need to setup on both host and remote system
+
 ## Ubuntu Setup
 
 1. **Download Ubuntu Image:** 
@@ -14,8 +16,9 @@
    - Follow the instructions provided in the [ROS Documentation](https://docs.ros.org/en/humble/Installation/Alternatives/Ubuntu-Development-Setup.html) to install ROS Humble on your system.
 
 2. **Create ROS Workspace:**
-   - Refer to the ROS tutorials to [Create a Workspace](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html).
+   - Refer to the ROS tutorials to [Create a Workspace](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html).
    - Once created, remember that the setup.bash file needs to be sourced every time you open a new terminal. To automate this, follow these steps:
+   **_NOTE:_** Skip 3 while creating workspace instead clone this repo inside src dir
 
       ```bash
       nano ~/.bashrc
@@ -30,7 +33,7 @@
    - Install the ROS Navigation stack package along with other dependencies using the following command:
 
       ```bash
-      sudo apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-xacro  ros-humble-rviz2 ros-humble-tf-transformations ros-humble-joint-state-publisher ros-humble-robot-state-publisher ros-humble-tf2*
+      sudo apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-xacro  ros-humble-rviz2 ros-humble-tf-transformations ros-humble-joint-state-publisher ros-humble-robot-state-publisher ros-humble-tf2-*
       ```
 
 ## Micro_ROS Setup
@@ -60,8 +63,11 @@ sudo chown root:root 99-my_rules.rules
 sudo udevadm control --reload-rules        
 sudo udevadm trigger
 ```
+
 ## Platformio
 Install Platforio on vscode and Upload micro_ros firmware in esp32 (**in micro_ros package**)
+[Platformio Installation Guide](https://www.youtube.com/watch?v=MeIcL9igsbM)
+**_NOTE:_** Change main.cpp code accordingly to main_moto_only.cpp if needed
 
 ## Launch Files
 

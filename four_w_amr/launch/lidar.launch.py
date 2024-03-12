@@ -58,7 +58,7 @@ def generate_launch_description():
             package='rplidar_ros',
             executable='rplidar_composition',
             name='rplidar_composition',
-            
+            respawn=True,
             parameters=[{'channel_type':channel_type,
                          'serial_port': serial_port,
                          'serial_baudrate': serial_baudrate,

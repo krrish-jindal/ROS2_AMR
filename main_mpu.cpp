@@ -1,4 +1,4 @@
-//    Main Motor controller
+//   WORKING motor control with IMU MPU6050
 
 #include <Arduino.h>
 #include <Adafruit_MotorShield.h>
@@ -12,8 +12,12 @@
 #include <WiFi.h>
 #include "soc/rtc_io_reg.h"
 #include <std_msgs/msg/string.h>
-#include <rcl_interfaces/msg/log.h>
-
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <sensor_msgs/msg/imu.h>
+#include <rosidl_runtime_c/string_functions.h>
+#include <rosidl_runtime_c/string.h>
+#include <rclc/timer.h>
 
 
 int16_t received_pwml_data = 0; // Global variable to store received pwml data
@@ -26,13 +30,11 @@ rcl_node_t node;
 rcl_subscription_t pwml_subscription;
 rcl_subscription_t pwmr_subscription;
 rcl_publisher_t encoder_data__publisher;
+rcl_publisher_t imu_data__publisher;
+
 std_msgs__msg__Int32MultiArray encoder_msg;
-rcl_interfaces__msg__Log msgLog;
+sensor_msgs__msg__Imu imu_msg;
 
-
-rcl_publisher_t motor_data_publisher;
-rcl_publisher_t publisher_log;
-std_msgs__msg__String motor_data_msg;
 
 int32_t encoderdata[5];  
 
@@ -68,7 +70,6 @@ volatile long lastEncoderValue1 = 0;
 volatile long lastEncoderValue2 = 0;
 volatile long lastEncoderValue3 = 0;
 volatile long lastEncoderValue4 = 0;
-const int BUILTIN_LED=2;
 
 
 
@@ -93,6 +94,7 @@ float error2 = 0.0;
 float error3 = 0.0;
 float error4 = 0.0;
 
+
 float kp =0.16;
 float kd =0.12;
 float ki =0.095;
@@ -111,6 +113,16 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x40);
 #define FRONTRIGHT 1
 #define BACKRIGHT 2
 #define BACKLEFT 3
+
+#define SDA_1 21
+#define SCL_1 22
+
+#define SDA_2 33
+#define SCL_2 32
+
+TwoWire I2C_1 =TwoWire(0);
+TwoWire I2C_2 =TwoWire(1);
+
 
 #define EXECUTE_EVERY_N_MS(MS, X)      \
   do                                   \
@@ -132,6 +144,10 @@ Adafruit_DCMotor *backLeftMotor = AFMS.getMotor(2);
 Adafruit_DCMotor *backRightMotor = AFMS.getMotor(3);
 Adafruit_DCMotor *frontRightMotor = AFMS.getMotor(4);
 
+
+Adafruit_MPU6050 mpu;
+
+
 void initMotorController()
 {
   if (IFDAC_ENABLED)
@@ -140,7 +156,13 @@ void initMotorController()
     // ...
   }
 
-  AFMS.begin(); // create with the default frequency 1.6KHz
+  AFMS.begin(0x1E,&I2C_2); // create with the default frequency 1.6KHz
+  AFMS.begin(0x40,&I2C_2); // create with the default frequency 1.6KHz
+  AFMS.begin(0x70,&I2C_2); // create with the default frequency 1.6KHz
+  AFMS.begin(0x7E,&I2C_2); // create with the default frequency 1.6KHz
+  AFMS.begin(0x6A,&I2C_2); // create with the default frequency 1.6KHz
+  
+
 
   pinMode(HALLSEN_A, INPUT);
   pinMode(HALLSEN_B, INPUT);
@@ -233,6 +255,7 @@ void pwmr_callback(const void *msg_recv)
 
 
 
+
 void updateEncoder1() {
 
 
@@ -267,6 +290,7 @@ void updateEncoder4() {
     encoderValue4--;
   }
 }
+
 
 
 
@@ -350,6 +374,7 @@ void destroy_entities()
   (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
 
   rcl_publisher_fini(&encoder_data__publisher, &node);
+  rcl_publisher_fini(&imu_data__publisher, &node);
   rclc_executor_fini(&executor);
   rcl_node_fini(&node);
   rclc_support_fini(&support);
@@ -387,6 +412,13 @@ bool create_entities()
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32MultiArray),
       "/encoderdata");
 
+  rclc_publisher_init_default(
+      &imu_data__publisher,
+      &node,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+      "/imu/data_raw");
+
+
   rclc_executor_add_subscription(
       &executor,
       &pwml_subscription,
@@ -400,7 +432,6 @@ bool create_entities()
       &received_pwmr_data,
       &pwmr_callback,
       ON_NEW_DATA);
-
   return true;
 }
 
@@ -420,10 +451,11 @@ void setup()
   IPAddress agent_ip(192, 168, 250, 151);
   size_t agent_port = 8888;
   
-  RCUTILS_LOG_INFO("micro_ros_example", "This is an informational message.");
 
   Serial.begin(115200);
-  pinMode(BUILTIN_LED, OUTPUT);
+  pinMode(2, OUTPUT);
+
+
   //         TO ENABLE SERIAL
 
   set_microros_serial_transports(Serial);
@@ -445,27 +477,68 @@ void setup()
 
   state = WAITING_AGENT;
 
-  Wire.begin(33, 32);
+  I2C_1.begin(SDA_1,SCL_1);
+  I2C_2.begin(SDA_2,SCL_2);
 
   encoderValue1 = 0;
   encoderValue2 = 0;
   encoderValue3 = 0;
   encoderValue4 = 0;
-  encoder_msg.data.data = encoderdata;
-  encoder_msg.data.size = 5;  
 
+  encoder_msg.data.data = encoderdata;
+  encoder_msg.data.size = 4;  
+
+  if (!mpu.begin(0x68,&I2C_1)) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  else{
+  Serial.println("MPU6050 Found!");
+  }
+  mpu.setHighPassFilter(MPU6050_HIGHPASS_1_25_HZ);
+  mpu.setMotionDetectionThreshold(10);
+  mpu.setMotionDetectionDuration(20);
+  // mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+  // mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+
+  mpu.setInterruptPinLatch(true);	// Keep it latched.  Will turn off when reinitialized.
+  mpu.setInterruptPinPolarity(true);
+  mpu.setMotionInterrupt(true);
+  
   initMotorController();
   EncoderInit();
+
 }
 
 
 void loop()
 { 
-
-
-  Serial.println(state);
-  unsigned long currentTime = millis();
+    unsigned long currentTime = millis();
   unsigned long elapsedTime = currentTime - lastUpdateTime;
+
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
+    uint32_t sec = currentTime / 1000;
+    uint32_t nsec = (currentTime % 1000) * 1000000;
+
+    imu_msg.header.stamp.sec = sec;
+    imu_msg.header.stamp.nanosec = nsec;
+    imu_msg.header.frame_id.data = "imu_link";
+
+    imu_msg.linear_acceleration.x = map(a.acceleration.x,-11.7,11.7,-10.0,10.0);
+    imu_msg.linear_acceleration.y =map(a.acceleration.y,-11.7,11.7,-10.0,10.0);
+    imu_msg.linear_acceleration.z = 9.8;
+    // imu_msg.linear_acceleration.z = a.acceleration.z;
+
+  imu_msg.angular_velocity.x = round(g.gyro.x * 10) / 10.0;
+  imu_msg.angular_velocity.y = round(g.gyro.y * 10) / 10.0;
+  imu_msg.angular_velocity.z = round(g.gyro.z * 10) / 10.0;
+
+    rcl_publish(&imu_data__publisher, &imu_msg, NULL);
+
+
 
 
 
@@ -577,7 +650,13 @@ void loop()
     encoderValue2 = 0;
     encoderValue3 = 0;
     encoderValue4 = 0;
+    a.acceleration.x= 0.0;
+    a.acceleration.y= 0.0;
+    a.acceleration.z= 0.0;
 
+    g.gyro.x= 0.0;
+    g.gyro.y= 0.0;
+    g.gyro.z= 0.0;
 
     delay(200);   
     ESP.restart();

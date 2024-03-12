@@ -114,7 +114,7 @@ def generate_launch_description():
     # Add the nodes to the LaunchDescription
     ld.add_action(start_twist_to_pwm)
     ld.add_action(start_odom_publisher)
-    ld.add_action(imu_tool)
+    # ld.add_action(imu_tool)
 
     # ld.add_action(start_ekf_node)
 

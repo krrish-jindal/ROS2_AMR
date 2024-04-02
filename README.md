@@ -48,7 +48,7 @@ Follow this link to install the Micro_ROS agent on the host: [Micro_ROS Installa
 
 ```bash
 cd /etc/udev/rules.d
-touch 99-my_rules.rules
+sudo touch 99-my_rules.rules
 sudo nano 99-my_rules.rules
 ```
 

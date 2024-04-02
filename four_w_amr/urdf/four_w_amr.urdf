@@ -86,7 +86,7 @@
   </link>
   <joint
     name="front_right_joint"
-    type="continuous">
+    type="fixed">
     <origin
       xyz="0.09 -0.12514 -0.0092692"
       rpy="0 0 0" />
@@ -144,7 +144,7 @@
   </link>
   <joint
     name="front_left_joint"
-    type="continuous">
+    type="fixed">
     <origin
       xyz="0.09 0.12514 -0.0092692"
       rpy="0 0 0" />
@@ -202,7 +202,7 @@
   </link>
   <joint
     name="back_right_joint"
-    type="continuous">
+    type="fixed">
     <origin
       xyz="-0.09 -0.12514 -0.0092692"
       rpy="0 0 0" />
@@ -260,7 +260,7 @@
   </link>
   <joint
     name="back_left_joint"
-    type="continuous">
+    type="fixed">
     <origin
       xyz="-0.09 0.12514 -0.0092692"
       rpy="0 0 0" />

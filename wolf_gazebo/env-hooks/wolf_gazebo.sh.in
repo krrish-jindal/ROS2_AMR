@@ -1,0 +1,7 @@
+GAZEBO_CLASSIC_SOURCE_FILE=/usr/share/gazebo/setup.sh
+
+source $GAZEBO_CLASSIC_SOURCE_FILE
+# Adding our models to the GAZEBO_MODEL_PATH
+ament_prepend_unique_value GAZEBO_MODEL_PATH "$COLCON_CURRENT_PREFIX/share/@PROJECT_NAME@/models"
+ament_prepend_unique_value GAZEBO_RESOURCE_PATH "$COLCON_CURRENT_PREFIX/share/@PROJECT_NAME@/worlds"
+    

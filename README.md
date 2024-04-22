@@ -87,6 +87,11 @@ ros2 run nav2_map_server map_saver_cli -f map
 
 ### To run base controller, lidar & navigation
 
+**To launch Gazebo Classic Simulation**
+```bash
+ros2 launch wolf_gazebo gazebo.launch.py
+```
+
 #### To run without realsense
 
 **On Remote machine using ssh**
@@ -113,4 +118,8 @@ ros2 launch four_w_amr lidar.launch.py
 ```bash
 ros2 launch four_w_amr display.launch.py
 ros2 launch four_w_amr_nav2 navigation_launch.py
+```
+#### To run Pi-Cam node
+```bash
+ros2 run image_tools cam2image
 ```

@@ -126,3 +126,8 @@ ros2 launch four_w_amr_nav2 navigation_launch.py
 ```bash
 ros2 run image_tools cam2image
 ```
+** To view image topic**
+```bash
+ros2 run rqt_image_view rqt_image_view
+```
+#### To view image frame on rviz add camera sensor and select image topic 

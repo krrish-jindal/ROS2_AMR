@@ -38,6 +38,9 @@
       ```bash
       sudo pip install transform3d
       ```
+4. **Install Classic Gazebo:**
+   - Follow the instructions provided in the [Gazebo Documentation](https://classic.gazebosim.org/tutorials?tut=install_ubuntu) to install Classic Gazebo on your system.
+
 ## Micro_ROS Setup
 
 Follow this link to install the Micro_ROS agent on the host: [Micro_ROS Installation Guide](https://micro.ros.org/docs/tutorials/core/first_application_linux/)
